@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-chrome",
+      "request": "launch",
+      "name": "Open index.html in Yandex Browser",
+      "file": "${workspaceFolder}/index.html",
+      "runtimeExecutable": "C:\\Users\\ILyaZ\\AppData\\Local\\Yandex\\YandexBrowser\\Application\\browser.exe"
+    }
+  ]
+}
