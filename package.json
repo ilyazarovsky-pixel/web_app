@@ -1,0 +1,33 @@
+{
+  "name": "learnhub",
+  "version": "1.0.0",
+  "description": "Образовательное веб-приложение с адаптивным дизайном",
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npx live-server",
+    "start": "cd backend && npm start"
+  },
+  "keywords": [
+    "education",
+    "nodejs",
+    "express",
+    "responsive"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "live-server": "^1.2.0"
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilyazarovsky-pixel/web_app.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ilyazarovsky-pixel/web_app/issues"
+  },
+  "homepage": "https://github.com/ilyazarovsky-pixel/web_app#readme"
+}

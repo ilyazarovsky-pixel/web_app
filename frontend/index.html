@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Образовательная платформа</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Контейнер для фонового узора -->
+  <div class="bg-pattern"></div>
+
+  <!-- Основной контент -->
+  <div id="app">
+    <!-- Экран авторизации -->
+    <section id="page-login" class="page active">
+      <div class="auth-container">
+        <div class="form-box">
+          <h2>Авторизация</h2>
+          <form id="loginForm">
+            <input type="email" placeholder="Email" required />
+            <input type="password" placeholder="Пароль" required />
+            <div id="login-error" class="form-error"></div>
+            <button type="submit">Вход</button>
+          </form>
+          <p><a href="#" onclick="navigateTo('register')">Зарегистрироваться</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Экран регистрации -->
+    <section id="page-register" class="page">
+      <div class="auth-container">
+        <div class="form-box">
+          <h2>Регистрация</h2>
+          <form id="registerForm">
+            <input type="text" placeholder="Имя" required />
+            <input type="email" placeholder="Email" required />
+            <!-- ✅ Улучшенный date-ввод -->
+            <div class="date-input-wrapper">
+              <label for="birthDate">Дата рождения *</label>
+              <input 
+                type="date" 
+                id="birthDate" 
+                name="birthDate" 
+                required
+                max=""
+                min="1900-01-01"
+              />
+              <small class="date-hint">Вам должно быть не менее 16 лет</small>
+            </div>
+            <input type="password" placeholder="Пароль (≥4 символа)" required minlength="4" />
+            <button type="submit">Зарегистрироваться</button>
+          </form>
+          <p><a href="#" onclick="navigateTo('login')">Уже есть аккаунт? Войти</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Главная (после входа) -->
+    <section id="page-main" class="page">
+      <header>
+        <div class="menu-icon" onclick="toggleMenu()">☰</div>
+        <h1>Главная</h1>
+        <div class="user-icon" onclick="navigateTo('profile')">👤</div>
+      </header>
+
+      <main>
+        <div class="course-grid" id="main-course-list">
+          <!-- Курсы подгружаются из API -->
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </main>
+
+      <footer>
+        <p>© 2025 MyApp</p>
+      </footer>
+    </section>
+
+    <!-- Профиль -->
+    <section id="page-profile" class="page">
+      <header>
+        <div class="menu-icon" onclick="navigateTo('main')">←</div>
+        <h1>Профиль</h1>
+        <div></div>
+      </header>
+
+      <main>
+        <div class="profile-card">
+          <img src="https://via.placeholder.com/100" alt="Аватар" class="avatar" />
+          <h2 id="profile-name">Загрузка...</h2>
+          <p id="profile-bio">—</p>
+        </div>
+
+        <h3>Ваши курсы</h3>
+        <div class="course-grid" id="profile-course-list">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </main>
+
+      <footer>
+        <p>© 2025 MyApp</p>
+      </footer>
+    </section>
+
+    <!-- Страница курса -->
+    <section id="page-course" class="page">
+      <header>
+        <div class="menu-icon" onclick="navigateTo('main')">←</div>
+        <h1 id="course-title">Курс</h1>
+        <div></div>
+      </header>
+
+      <main>
+        <div class="course-content">
+          <img src="https://via.placeholder.com/300x200?text=Изображение+курса" alt="Фото курса" class="course-image" />
+          <div class="video-placeholder">Видеоролик урока</div>
+          <button class="next-btn" onclick="completeCourse()">Завершить курс</button>
+        </div>
+      </main>
+
+      <footer>
+        <p>© 2025 MyApp</p>
+      </footer>
+    </section>
+
+    <!-- Мобильное меню -->
+    <div id="mobile-menu-overlay" class="mobile-menu-overlay"></div>
+    <div id="mobile-menu" class="mobile-menu">
+      <div class="menu-header">
+        <h3>Меню</h3>
+        <span class="close-menu-btn" onclick="toggleMenu()">←</span>
+      </div>
+      <div class="menu-item" onclick="navigateTo('main'); toggleMenu()">Главная</div>
+      <div class="menu-item" onclick="navigateTo('profile'); toggleMenu()">Профиль</div>
+      <div class="menu-item" onclick="logout(); toggleMenu()">Выйти</div>
+    </div>
+
+    <!-- Кнопка "Меню" в шапке -->
+    <header>
+      <div class="menu-icon" onclick="toggleMenu()">→</div>
+      <h1 id="page-title">Главная</h1>
+      <div class="user-icon" onclick="navigateTo('profile')">👤</div>
+    </header>
+  </div>
+
+  <!-- ✅ Модальное окно: Курс завершён -->
+  <div id="completion-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">&times;</span>
+      <h2>🎓 Курс завершён!</h2>
+      <p id="modal-message">Поздравляем! Вы успешно завершили курс.</p>
+      <button class="modal-btn" onclick="closeModal(); navigateTo('main');">На главную</button>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
