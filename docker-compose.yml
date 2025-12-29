@@ -1,0 +1,13 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/data:/app/data  # Для сохранения базы данных
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped

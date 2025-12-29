@@ -1,9 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-
+const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Убедимся, что папка data существует
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  console.log('✅ Папка data создана');
+}
 
 // Middleware
 app.use(cors());

@@ -1,98 +1,128 @@
 const express = require('express');
+const User = require('../models/User');
+const {
+  validateEmail,
+  validatePassword,
+  validateName,
+  validateBirthDate,
+  validateAge
+} = require('../utils/validation');
 const router = express.Router();
 
-// Упрощённая имитация базы данных
-let users = [];
+// Обновлённый обработчик регистрации
+router.post('/register', async (req, res) => {
+  const { name, email, password, birthDate } = req.body;
 
-router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  const user = users.find(u => u.email === email && u.password === password);
-  if (user) {
-    res.json({ success: true, message: 'Вход выполнен', user: { id: user.id, name: user.name } });
-  } else {
-    res.status(401).json({ success: false, message: 'Неверный email или пароль' });
+  // Валидация данных
+  if (!validateName(name)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Имя должно быть строкой и содержать хотя бы 1 символ'
+    });
+  }
+
+  if (!validateEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Некорректный формат email'
+    });
+  }
+
+  if (!validatePassword(password)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Пароль должен содержать не менее 4 символов'
+    });
+  }
+
+  if (!validateBirthDate(birthDate)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Некорректная дата рождения'
+    });
+  }
+
+  if (!validateAge(birthDate)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Вам должно быть не менее 16 лет для регистрации'
+    });
+  }
+
+  try {
+    const newUser = await User.create({
+      name,
+      email,
+      password,
+      birthDate
+    });
+
+    res.json({
+      success: true,
+      message: 'Регистрация успешна',
+      user: { id: newUser.id, name: newUser.name }
+    });
+  } catch (error) {
+    if (error.message.includes('уже существует')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Пользователь с таким email уже существует'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка сервера при регистрации'
+    });
   }
 });
 
-// Вспомогательные функции (добавьте в начало файла auth.js)
-function isValidDate(dateString) {
-  if (!dateString) return false;
-  const d = new Date(dateString);
-  return d instanceof Date && !isNaN(d) && 
-         dateString === new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-           .toISOString()
-           .split('T')[0];
-}
+const { generateToken } = require('../middleware/auth');
 
-function getAge(birthDateString) {
-  const today = new Date();
-  const birthDate = new Date(birthDateString);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-}
+// Обновлённый обработчик входа
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
 
-// Обновлённый обработчик регистрации
-router.post('/register', (req, res) => {
-  const { name, email, password, birthDate } = req.body;
-
-  // ✅ 1. Пароль ≥4 символов
-  if (!password || password.length < 4) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Пароль должен содержать не менее 4 символов' 
+  // Валидация данных
+  if (!validateEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Некорректный формат email'
     });
   }
 
-  // ✅ 2. Проверка формата и существования даты
-  if (!birthDate || !isValidDate(birthDate)) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Некорректная дата рождения' 
+  if (!validatePassword(password)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Пароль должен содержать не менее 4 символов'
     });
   }
 
-  // ✅ 3. Возраст ≥16 лет
-  const age = getAge(birthDate);
-  if (age < 16) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Вам должно быть не менее 16 лет для регистрации' 
+  try {
+    const user = await User.validatePassword(email, password);
+
+    if (user) {
+      // Генерируем JWT токен
+      const token = generateToken(user.id);
+
+      res.json({
+        success: true,
+        message: 'Вход выполнен',
+        token,
+        user: { id: user.id, name: user.name }
+      });
+    } else {
+      res.status(401).json({
+        success: false,
+        message: 'Неверный email или пароль'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка сервера при входе'
     });
   }
-
-  // Остальные проверки
-  if (!name || !email) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Все поля обязательны' 
-    });
-  }
-
-  if (users.some(u => u.email === email)) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Пользователь с таким email уже существует' 
-    });
-  }
-
-  const newUser = {
-    id: Date.now(),
-    name,
-    email,
-    password, // ⚠️ В продакшене — bcrypt.hashSync(password, 10)
-    birthDate
-  };
-  users.push(newUser);
-  
-  res.json({ 
-    success: true, 
-    message: 'Регистрация успешна', 
-    user: { id: newUser.id, name: newUser.name } 
-  });
 });
 
 module.exports = router;

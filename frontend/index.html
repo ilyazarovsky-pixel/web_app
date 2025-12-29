@@ -39,10 +39,10 @@
             <!-- ✅ Улучшенный date-ввод -->
             <div class="date-input-wrapper">
               <label for="birthDate">Дата рождения *</label>
-              <input 
-                type="date" 
-                id="birthDate" 
-                name="birthDate" 
+              <input
+                type="date"
+                id="birthDate"
+                name="birthDate"
                 required
                 max=""
                 min="1900-01-01"
@@ -115,9 +115,12 @@
 
       <main>
         <div class="course-content">
-          <img src="https://via.placeholder.com/300x200?text=Изображение+курса" alt="Фото курса" class="course-image" />
-          <div class="video-placeholder">Видеоролик урока</div>
-          <button class="next-btn" onclick="completeCourse()">Завершить курс</button>
+          <div class="course-pages-container">
+            <!-- Страницы курса будут загружаться сюда -->
+          </div>
+          <div class="course-navigation">
+            <button class="next-btn" id="next-btn" onclick="nextCoursePage()">Далее</button>
+          </div>
         </div>
       </main>
 
@@ -126,21 +129,24 @@
       </footer>
     </section>
 
-    <!-- Мобильное меню -->
-    <div id="mobile-menu-overlay" class="mobile-menu-overlay"></div>
     <div id="mobile-menu" class="mobile-menu">
       <div class="menu-header">
         <h3>Меню</h3>
-        <span class="close-menu-btn" onclick="toggleMenu()">←</span>
+        <span class="close-menu-btn" onclick="toggleMenu(); event.stopPropagation();">←</span>
       </div>
-      <div class="menu-item" onclick="navigateTo('main'); toggleMenu()">Главная</div>
-      <div class="menu-item" onclick="navigateTo('profile'); toggleMenu()">Профиль</div>
-      <div class="menu-item" onclick="logout(); toggleMenu()">Выйти</div>
+      <div class="menu-content">
+        <div class="menu-item" onclick="navigateTo('main'); toggleMenu()">Главная</div>
+        <div class="menu-item" onclick="navigateTo('profile'); toggleMenu()">Профиль</div>
+        <div class="menu-item" onclick="logout(); toggleMenu()">Выйти</div>
+      </div>
     </div>
 
-    <!-- Кнопка "Меню" в шапке -->
     <header>
-      <div class="menu-icon" onclick="toggleMenu()">→</div>
+      <div class="menu-icon" onclick="toggleMenu()">
+        <span class="line"></span>
+        <span class="line"></span>
+        <span class="line"></span>
+      </div>
       <h1 id="page-title">Главная</h1>
       <div class="user-icon" onclick="navigateTo('profile')">👤</div>
     </header>

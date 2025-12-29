@@ -18,6 +18,7 @@
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "cypress": "^15.8.1",
     "live-server": "^1.2.0"
   },
   "main": "index.js",
