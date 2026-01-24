@@ -1,35 +1,39 @@
-# Используем более новую версию Node.js, совместимую с better-sqlite3
-FROM node:20-alpine
-
-# Устанавливаем Python и другие зависимости для компиляции native модулей
-RUN apk add --no-cache python3 make g++
+# Используем легковесный Alpine образ с конкретной версией Node.js
+FROM node:18-alpine
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем package.json и package-lock.json (если есть)
-COPY backend/package*.json ./
+# Сначала копируем только package.json и package-lock.json
+# Это позволяет Docker кэшировать слой с зависимостями
+# При изменении кода зависимости не будут переустанавливаться
+COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm install
+# Устанавливаем только production зависимости
+# --omit=dev исключает devDependencies
+RUN npm ci --omit=dev
 
-# Создаем директории для backend и frontend
-RUN mkdir -p backend frontend
+# Копируем остальной код приложения
+COPY backend ./backend
+COPY frontend ./frontend
 
-# Копируем backend файлы
-COPY backend/ ./backend/
+# Устанавливаем переменные окружения по умолчанию
+ENV NODE_ENV=production
+ENV PORT=3000
 
-# Копируем frontend файлы
-COPY frontend/ ./frontend/
+# Создаём непривилегированного пользователя для безопасности
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# Создаем директорию для данных (включая базу данных)
-RUN mkdir -p backend/data
+# Создаём директорию для данных и даём права
+RUN mkdir -p /app/backend/data && \
+    chown -R nodejs:nodejs /app
 
-# Открываем порт 3000
+# Переключаемся на непривилегированного пользователя
+USER nodejs
+
+# Открываем порт
 EXPOSE 3000
 
-# Устанавливаем рабочую директорию в backend
-WORKDIR /app/backend
-
 # Запускаем приложение
-CMD ["node", "server.js"]
+CMD ["node", "backend/server.js"]
