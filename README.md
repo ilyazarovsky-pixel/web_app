@@ -55,3 +55,15 @@ docker-compose build
 - The SQLite database file is persisted in the `./backend/data` directory
 - The application runs on port 3000
 - The database file will persist between container restarts
+
+## Troubleshooting
+
+### Native Module Issues
+If you encounter errors like "invalid ELF header" when running tests, this is typically due to native modules being built for a different platform. To fix this:
+
+```bash
+cd backend
+npm rebuild better-sqlite3
+```
+
+This rebuilds the native module for your current platform.
