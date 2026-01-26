@@ -1,4 +1,5 @@
 const Database = require('better-sqlite3');
+const bcrypt = require('bcryptjs');
 const path = require('path');
 
 // Подключаемся к базе данных
@@ -37,12 +38,15 @@ class User {
         throw new Error('Пользователь с таким email уже существует');
       }
 
+      // Хешируем пароль перед сохранением
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       // Вставляем нового пользователя
       const result = db.prepare(
         'INSERT INTO users (name, email, password, birth_date) VALUES (?, ?, ?, ?)'
-      ).run(name, email, password, birthDate);
+      ).run(name, email, hashedPassword, birthDate);
 
-      // Возвращаем созданного пользователя
+      // Возвращаем созданного пользователя (без пароля)
       const user = db.prepare('SELECT id, name, email, birth_date as birthDate, created_at as createdAt FROM users WHERE id = ?').get(result.lastInsertRowid);
       return user;
     } catch (error) {
@@ -55,7 +59,7 @@ class User {
       // Находим пользователя по email
       const user = db.prepare('SELECT id, name, email, password, birth_date as birthDate FROM users WHERE email = ?').get(email);
 
-      if (user && user.password === password) { // В реальном приложении используйте bcrypt для хеширования паролей
+      if (user && await bcrypt.compare(password, user.password)) {
         // Возвращаем пользователя без пароля для безопасности
         const { password: _, ...userWithoutPassword } = user;
         return userWithoutPassword;
