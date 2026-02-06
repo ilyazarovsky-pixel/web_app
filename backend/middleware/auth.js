@@ -1,39 +1,35 @@
 const jwt = require('jsonwebtoken');
 
-// Генерация токена
 function generateToken(userId) {
-  const secret = process.env.JWT_SECRET || 'dev-secret-key';
-  const payload = { id: userId };
-  const options = { expiresIn: '24h' }; // Токен действителен 24 часа
-
-  return jwt.sign(payload, secret, options);
+  return jwt.sign(
+    { id: userId },
+    process.env.JWT_SECRET || 'dev-secret-key',
+    { expiresIn: '24h' }  // Токен действует 24 часа
+  );
 }
 
-// Middleware для аутентификации токена
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Токен отсутствует'
-    });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Токен не предоставлен' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key', (err, user) => {
-    if (err) {
-      return res.status(403).json({
-        success: false,
-        message: 'Токен недействителен'
-      });
-    }
-    req.user = user;
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key');
+    req.user = decoded;
     next();
-  });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Срок действия токена истёк' });
+    }
+    return res.status(401).json({ error: 'Недействительный токен' });
+  }
 }
 
-module.exports = {
-  authenticateToken,
-  generateToken
-};
+// Export the middleware function as default and named export
+module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;
+module.exports.generateToken = generateToken;

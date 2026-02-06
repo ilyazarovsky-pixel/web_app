@@ -29,55 +29,48 @@ createTables();
 
 class User {
   static async create(userData) {
-    try {
-      const { name, email, password, birthDate } = userData;
+    const { name, email, password, birthDate } = userData;
 
-      // Проверяем, существует ли пользователь с таким email
-      const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-      if (existingUser) {
-        throw new Error('Пользователь с таким email уже существует');
-      }
-
-      // Хешируем пароль перед сохранением
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Вставляем нового пользователя
-      const result = db.prepare(
-        'INSERT INTO users (name, email, password, birth_date) VALUES (?, ?, ?, ?)'
-      ).run(name, email, hashedPassword, birthDate);
-
-      // Возвращаем созданного пользователя (без пароля)
-      const user = db.prepare('SELECT id, name, email, birth_date as birthDate, created_at as createdAt FROM users WHERE id = ?').get(result.lastInsertRowid);
-      return user;
-    } catch (error) {
-      throw error;
+    // Проверяем, существует ли пользователь с таким email
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (existingUser) {
+      throw new Error('Пользователь с таким email уже существует');
     }
+
+    // Хешируем пароль перед сохранением
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Вставляем нового пользователя
+    const result = db.prepare(
+      'INSERT INTO users (name, email, password, birth_date) VALUES (?, ?, ?, ?)'
+    ).run(name, email, hashedPassword, birthDate);
+
+    // Возвращаем созданного пользователя (без пароля)
+    const user = db.prepare('SELECT id, name, email, birth_date as birthDate, created_at as createdAt FROM users WHERE id = ?').get(result.lastInsertRowid);
+    return user;
   }
 
   static async validatePassword(email, password) {
-    try {
-      // Находим пользователя по email
-      const user = db.prepare('SELECT id, name, email, password, birth_date as birthDate FROM users WHERE email = ?').get(email);
+    // Находим пользователя по email
+    const user = db.prepare('SELECT id, name, email, password, birth_date as birthDate FROM users WHERE email = ?').get(email);
 
-      if (user && await bcrypt.compare(password, user.password)) {
-        // Возвращаем пользователя без пароля для безопасности
-        const { password: _, ...userWithoutPassword } = user;
-        return userWithoutPassword;
-      }
-
-      return null;
-    } catch (error) {
-      throw error;
+    if (user && await bcrypt.compare(password, user.password)) {
+      // Возвращаем пользователя без пароля для безопасности
+      const { password: _password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
     }
+
+    return null;
   }
 
   static async findById(id) {
-    try {
-      const user = db.prepare('SELECT id, name, email, birth_date as birthDate, avatar, bio, created_at as createdAt FROM users WHERE id = ?').get(id);
-      return user;
-    } catch (error) {
-      throw error;
-    }
+    const user = db.prepare('SELECT id, name, email, birth_date as birthDate, avatar, bio, created_at as createdAt FROM users WHERE id = ?').get(id);
+    return user;
+  }
+
+  static async findByIdWithPassword(id) {
+    const user = db.prepare('SELECT id, name, email, password, birth_date as birthDate, avatar, bio, created_at as createdAt FROM users WHERE id = ?').get(id);
+    return user;
   }
 }
 

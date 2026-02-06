@@ -1,69 +1,73 @@
-# LearnHub - Dockerized
+# LearnHub
 
-This project is containerized using Docker. Follow these instructions to run the application.
+Образовательная веб-платформа для онлайн-обучения.
 
-## Prerequisites
+## Технологии
 
-- Docker Desktop installed (https://www.docker.com/products/docker-desktop)
-- Docker Compose installed (usually included with Docker Desktop)
+- **Backend:** Node.js, Express
+- **Database:** SQLite
+- **Auth:** JWT (JSON Web Tokens)
+- **Containerization:** Docker
 
-## Installing Docker
+## Быстрый старт
 
-If Docker is not installed on your system:
+### Без Docker
 
-1. Download Docker Desktop from: https://www.docker.com/products/docker-desktop
-2. Install the application
-3. Start Docker Desktop and wait for it to fully initialize
-4. You should see the Docker whale icon in your system tray when it's running
-
-## Running the Application
-
-1. Make sure Docker Desktop is running
-2. Make sure you have a `.env` file in the root directory with your environment variables (JWT_SECRET, etc.)
-3. Open a terminal/command prompt in this directory
-4. Build and start the services:
+1. Клонируй репозиторий:
    ```bash
-   docker-compose up --build
+   git clone https://github.com/ilyazarovsky-pixel/web_app.git
+   cd web_app
    ```
 
-5. The application will be available at `http://localhost:3000`
+2. Установи зависимости:
+   ```bash
+   npm install
+   ```
 
-## Alternative: Running in Detached Mode
+3. Создай файл окружения:
+   ```bash
+   cp .env.example .env
+   # Заполни переменные в .env
+   ```
 
-To run the services in the background:
+4. Запусти сервер:
+   ```bash
+   npm run dev    # режим разработки (с автоперезагрузкой)
+   npm start      # production режим
+   ```
 
-```bash
-docker-compose up --build -d
-```
+5. Открой в браузере: http://localhost:3000
 
-## Stopping the Application
-
-```bash
-docker-compose down
-```
-
-## Building Only
-
-To build the Docker images without starting the services:
-
-```bash
-docker-compose build
-```
-
-## Notes
-
-- The SQLite database file is persisted in the `./backend/data` directory
-- The application runs on port 3000
-- The database file will persist between container restarts
-
-## Troubleshooting
-
-### Native Module Issues
-If you encounter errors like "invalid ELF header" when running tests, this is typically due to native modules being built for a different platform. To fix this:
+### С Docker
 
 ```bash
-cd backend
-npm rebuild better-sqlite3
+docker-compose up --build
 ```
 
-This rebuilds the native module for your current platform.
+## Тестирование
+
+```bash
+npm test
+```
+
+## API документация
+
+Подробное описание API — в файле [API.md](./API.md)
+
+## Структура проекта
+
+```
+├── backend/
+│   ├── server.js          # Основной сервер Express
+│   ├── routes/            # Маршруты API
+│   ├── utils/             # Утилиты (валидация и др.)
+│   └── data/              # SQLite база данных
+├── frontend/
+│   ├── index.html         # Главная страница
+│   ├── 404.html           # Страница ошибки
+│   └── ...                # CSS, JS файлы
+├── .github/workflows/     # CI/CD (GitHub Actions)
+├── Dockerfile             # Конфигурация Docker
+├── docker-compose.yml     # Docker Compose
+└── API.md                 # Документация API
+```
