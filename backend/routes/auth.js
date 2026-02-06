@@ -62,8 +62,8 @@ router.post('/register', async (req, res) => {
       message: 'Регистрация успешна',
       user: { id: newUser.id, name: newUser.name }
     });
-  } catch (error) {
-    if (error.message.includes('уже существует')) {
+  } catch (err) {
+    if (err.message.includes('уже существует')) {
       return res.status(400).json({
         success: false,
         message: 'Пользователь с таким email уже существует'
@@ -117,7 +117,8 @@ router.post('/login', async (req, res) => {
         message: 'Неверный email или пароль'
       });
     }
-  } catch (error) {
+  } catch (err) {
+    console.error('Ошибка при входе:', err.message);
     res.status(500).json({
       success: false,
       message: 'Ошибка сервера при входе'

@@ -1,7 +1,4 @@
 const express = require('express');
-const { authenticateToken } = require('../middleware/auth');
-const { validateId } = require('../utils/validation');
-const User = require('../models/User');
 const router = express.Router();
 
 // Пример данных курсов
@@ -80,35 +77,6 @@ router.get('/courses/:id', (req, res) => {
   }
 
   res.json(course);
-});
-
-// Получить профиль пользователя (защищенный маршрут)
-router.get('/profile', authenticateToken, async (req, res) => {
-  try {
-    // Получаем обновленные данные пользователя из базы
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Пользователь не найден'
-      });
-    }
-
-    res.json({
-      name: user.name,
-      email: user.email,
-      birthDate: user.birthDate,
-      avatar: 'https://via.placeholder.com/100',
-      courses: courses.slice(0, 2),
-      bio: 'Люблю учиться и развиваться.',
-      createdAt: user.createdAt
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Ошибка сервера при получении профиля'
-    });
-  }
 });
 
 module.exports = router;
