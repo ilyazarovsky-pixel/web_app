@@ -7,7 +7,9 @@
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npx live-server",
     "start": "node backend/server.js",
-    "test": "jest --detectOpenHandles"
+    "test": "jest --detectOpenHandles",
+    "lint": "eslint backend/ --ext .js",
+    "lint:fix": "eslint backend/ --ext .js --fix"
   },
   "keywords": [
     "education",
@@ -20,6 +22,8 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "cypress": "^15.8.1",
+    "eslint": "^9.39.2",
+    "globals": "^17.3.0",
     "jest": "^30.2.0",
     "live-server": "^1.2.0",
     "nodemon": "^3.1.11",
@@ -30,13 +34,14 @@
     "type": "git",
     "url": "git+https://github.com/ilyazarovsky-pixel/web_app.git"
   },
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/ilyazarovsky-pixel/web_app/issues"
   },
   "homepage": "https://github.com/ilyazarovsky-pixel/web_app#readme",
   "dependencies": {
     "compression": "^1.8.1",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "rotating-file-stream": "^3.2.8"
   }
 }
