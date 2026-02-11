@@ -35,6 +35,12 @@ body {
   display: block;
 }
 
+/* Скрываем header на страницах входа и регистрации */
+#page-login.active header,
+#page-register.active header {
+  display: none;
+}
+
 /* Авторизация/регистрация */
 .auth-container {
   display: flex;

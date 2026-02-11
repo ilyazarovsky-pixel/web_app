@@ -33,8 +33,15 @@ function addAuthHeader(headers) {
 }
 
 function navigateTo(pageId) {
+  // Убедимся, что элемент существует перед тем, как сделать его активным
+  const targetPage = document.getElementById(`page-${pageId}`);
+  if (!targetPage) {
+    console.error(`Страница с ID page-${pageId} не найдена`);
+    return;
+  }
+  
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  document.getElementById(`page-${pageId}`).classList.add('active');
+  targetPage.classList.add('active');
 
   // Обновляем заголовок в шапке
   const titles = {
@@ -44,7 +51,12 @@ function navigateTo(pageId) {
     'profile': 'Профиль',
     'course': 'Курс'
   };
-  document.getElementById('page-title').textContent = titles[pageId] || 'Главная';
+  
+  // Обновляем заголовок в шапке главной страницы, если он доступен
+  const pageTitleElement = document.getElementById('page-title');
+  if (pageTitleElement && pageId !== 'login' && pageId !== 'register') {
+    pageTitleElement.textContent = titles[pageId] || 'Главная';
+  }
 
   if (pageId === 'main') {
     loadCourses('main-course-list');
@@ -53,7 +65,7 @@ function navigateTo(pageId) {
   }
 
   // Скрыть меню при переходе
-  if (document.getElementById('mobile-menu').classList.contains('active')) {
+  if (document.getElementById('mobile-menu')?.classList.contains('active')) {
     toggleMenu();
   }
 }
@@ -83,12 +95,23 @@ async function loadCourses(containerId) {
     const courses = await res.json();
     const container = document.getElementById(containerId);
 
-    container.innerHTML = courses.map(course => `
-      <div class="course-card" onclick="openCourse(${course.id}, '${course.title}')">
+    // Очищаем контейнер
+    container.innerHTML = '';
+
+    // Создаем элементы курсов и добавляем обработчики событий
+    courses.forEach(course => {
+      const courseElement = document.createElement('div');
+      courseElement.className = 'course-card';
+      courseElement.innerHTML = `
         <h3>${course.title}</h3>
         <p>${course.description || 'Описание курса'}</p>
-      </div>
-    `).join('');
+      `;
+      
+      // Добавляем обработчик события
+      courseElement.addEventListener('click', () => openCourse(course.id, course.title));
+      
+      container.appendChild(courseElement);
+    });
   } catch (err) {
     container.innerHTML = '<p class="error">Ошибка загрузки курсов</p>';
   }
@@ -308,13 +331,6 @@ function isAtLeast16(birthDateString) {
   return age >= 16;
 }
 
-// Установим max-дату как "сегодня" (чтобы нельзя было выбрать будущее)
-document.addEventListener('DOMContentLoaded', () => {
-  const today = new Date().toISOString().split('T')[0];
-  const birthInput = document.getElementById('birthDate');
-  if (birthInput) birthInput.max = today;
-});
-
 // Обработчик регистрации (обновлённый)
 document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -361,6 +377,20 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
+    
+    if (!res.ok) {
+      // Обработка различных HTTP ошибок
+      if (res.status === 400) {
+        const errorData = await res.json();
+        alert('❌ ' + (errorData.message || 'Некорректные данные для регистрации'));
+      } else if (res.status === 500) {
+        alert('❌ Внутренняя ошибка сервера. Попробуйте позже.');
+      } else {
+        alert('❌ Ошибка регистрации: ' + res.status);
+      }
+      return;
+    }
+    
     const result = await res.json();
 
     if (result.success) {
@@ -370,32 +400,140 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
       alert('❌ ' + (result.message || 'Ошибка регистрации'));
     }
   } catch (err) {
+    console.error('Ошибка при регистрации:', err);
     alert('⚠️ Ошибка подключения к серверу');
   }
+});
 
-  // 🔄 Автовосстановление сессии
+// 🔄 Автовосстановление сессии при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
   const savedUser = localStorage.getItem('user');
   const savedToken = localStorage.getItem('authToken');
 
+  // Если есть сохраненные данные пользователя и токен
   if (savedUser && savedToken) {
     try {
       currentUser = JSON.parse(savedUser);
       authToken = savedToken;
-      navigateTo('main');
+      
+      // Проверяем, находимся ли мы на странице входа или регистрации
+      const loginPage = document.getElementById('page-login');
+      const registerPage = document.getElementById('page-register');
+      
+      // Если мы не на страницах входа или регистрации, перенаправляем на главную
+      if (!(loginPage?.classList.contains('active') || registerPage?.classList.contains('active'))) {
+        navigateTo('main');
+      }
     } catch (e) {
       localStorage.removeItem('user');
       localStorage.removeItem('authToken');
-      navigateTo('login');
     }
   } else {
+    // Если нет сохраненной сессии, убедимся, что отображается страница входа
     navigateTo('login');
   }
+
+  // Установим max-дату как "сегодня" (чтобы нельзя было выбрать будущее)
+  const today = new Date().toISOString().split('T')[0];
+  const birthInput = document.getElementById('birthDate');
+  if (birthInput) birthInput.max = today;
 
   // Обработчик закрытия модального окна по клику вне
   window.addEventListener('click', (e) => {
     const modal = document.getElementById('completion-modal');
     if (e.target === modal) closeModal();
   });
+  
+  // Добавляем обработчики для ссылок регистрации и входа
+  const registerLink = document.getElementById('register-link');
+  const loginLink = document.getElementById('login-link');
+  
+  if (registerLink) {
+    registerLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      navigateTo('register');
+    });
+  }
+  
+  if (loginLink) {
+    loginLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      navigateTo('login');
+    });
+  }
+  
+  // Добавляем обработчики для кнопок навигации
+  const profileBackBtn = document.getElementById('profile-back-btn');
+  const courseBackBtn = document.getElementById('course-back-btn');
+  const mainMenuBtn = document.getElementById('main-menu-btn');
+  const userProfileBtn = document.getElementById('user-profile-btn');
+  const closeMenuBtn = document.getElementById('close-menu-btn');
+  const menuMainBtn = document.getElementById('menu-main-btn');
+  const menuProfileBtn = document.getElementById('menu-profile-btn');
+  const menuLogoutBtn = document.getElementById('menu-logout-btn');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+  const modalMainBtn = document.getElementById('modal-main-btn');
+  
+  if (profileBackBtn) {
+    profileBackBtn.addEventListener('click', () => navigateTo('main'));
+  }
+  
+  if (courseBackBtn) {
+    courseBackBtn.addEventListener('click', () => navigateTo('main'));
+  }
+  
+  if (mainMenuBtn) {
+    mainMenuBtn.addEventListener('click', toggleMenu);
+  }
+  
+  if (userProfileBtn) {
+    userProfileBtn.addEventListener('click', () => navigateTo('profile'));
+  }
+  
+  if (closeMenuBtn) {
+    closeMenuBtn.addEventListener('click', function(e) {
+      toggleMenu();
+      e.stopPropagation();
+    });
+  }
+  
+  if (menuMainBtn) {
+    menuMainBtn.addEventListener('click', function() {
+      navigateTo('main');
+      toggleMenu();
+    });
+  }
+  
+  if (menuProfileBtn) {
+    menuProfileBtn.addEventListener('click', function() {
+      navigateTo('profile');
+      toggleMenu();
+    });
+  }
+  
+  if (menuLogoutBtn) {
+    menuLogoutBtn.addEventListener('click', function() {
+      logout();
+      toggleMenu();
+    });
+  }
+  
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener('click', closeModal);
+  }
+  
+  if (modalMainBtn) {
+    modalMainBtn.addEventListener('click', function() {
+      closeModal();
+      navigateTo('main');
+    });
+  }
+  
+  // Обработчик для кнопки "Далее" в курсе
+  const nextBtn = document.getElementById('next-btn');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', nextCoursePage);
+  }
 });
 
 // Вход — обновлённый
@@ -425,6 +563,25 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
+    
+    if (!res.ok) {
+      // Обработка различных HTTP ошибок
+      if (res.status === 400) {
+        const errorData = await res.json();
+        errorEl.textContent = errorData.message || 'Некорректные данные для входа';
+      } else if (res.status === 401) {
+        errorEl.textContent = 'Неверный email или пароль';
+      } else if (res.status === 429) {
+        errorEl.textContent = 'Слишком много попыток входа. Попробуйте позже.';
+      } else if (res.status === 500) {
+        errorEl.textContent = 'Внутренняя ошибка сервера. Попробуйте позже.';
+      } else {
+        errorEl.textContent = `Ошибка входа: ${res.status}`;
+      }
+      errorEl.classList.add('show');
+      return;
+    }
+    
     const result = await res.json();
 
     if (result.success) {
@@ -442,6 +599,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
       document.querySelector('#loginForm input[placeholder="Email"]').focus();
     }
   } catch (err) {
+    console.error('Ошибка при входе:', err);
     errorEl.textContent = '⚠️ Ошибка подключения к серверу';
     errorEl.classList.add('show');
   }
