@@ -67,13 +67,8 @@ router.put('/profile/password', authMiddleware, async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Обновляем пароль в базе данных
-    const Database = require('better-sqlite3');
-    const path = require('path');
-    const dbPath = path.join(__dirname, '../data/database.db');
-    const db = new Database(dbPath);
-
-    db.prepare('UPDATE users SET password = ? WHERE id = ?')
-      .run(hashedPassword, req.user.id);
+    const { run } = require('../utils/database');
+    await run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.user.id]);
 
     res.json({ message: 'Пароль успешно изменён' });
   } catch (error) {

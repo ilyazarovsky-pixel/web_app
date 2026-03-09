@@ -1,28 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const { get } = require('../utils/database');
 
 // GET /stats — базовая статистика платформы
 // Защищён авторизацией
-router.get('/stats', authMiddleware, (req, res) => {
-  const Database = require('better-sqlite3');
-const path = require('path');
-const dbPath = path.join(__dirname, '../data/database.db');
-const db = new Database(dbPath);
-
+router.get('/stats', authMiddleware, async (req, res) => {
   try {
     // Собираем статистику из нескольких таблиц
-    const usersStmt = db.prepare('SELECT COUNT(*) as count FROM users');
-    const usersResult = usersStmt.get();
+    const usersResult = await get('SELECT COUNT(*) as count FROM users');
     const stats = { totalUsers: usersResult.count };
 
-    const coursesStmt = db.prepare('SELECT COUNT(*) as count FROM courses');
-    const coursesResult = coursesStmt.get();
+    const coursesResult = await get('SELECT COUNT(*) as count FROM courses');
     stats.totalCourses = coursesResult.count;
 
     // Новые пользователи за последние 7 дней
-    const recentStmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE created_at >= datetime(\'now\', \'-7 days\')');
-    const recentResult = recentStmt.get();
+    const recentResult = await get('SELECT COUNT(*) as count FROM users WHERE created_at >= datetime(\'now\', \'-7 days\')');
     stats.newUsersLast7Days = recentResult ? recentResult.count : 0;
 
     stats.timestamp = new Date().toISOString();

@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const { get, all } = require('../utils/database');
 
 // GET /courses/search?q=javascript&page=1&limit=10
-router.get('/courses/search', (req, res) => {
+router.get('/courses/search', async (req, res) => {
   const { q, page = 1, limit = 10 } = req.query;
 
   // Валидация
@@ -14,23 +15,18 @@ router.get('/courses/search', (req, res) => {
   const offset = (parseInt(page) - 1) * parseInt(limit);
   const pageLimit = Math.min(parseInt(limit), 50); // максимум 50 на страницу
 
-  const Database = require('better-sqlite3');
-const path = require('path');
-const dbPath = path.join(__dirname, '../data/database.db');
-const db = new Database(dbPath);
-
   try {
     // Сначала получаем общее количество результатов
-    const countStmt = db.prepare(
-      'SELECT COUNT(*) as total FROM courses WHERE title LIKE ? OR description LIKE ?'
+    const countResult = await get(
+      'SELECT COUNT(*) as total FROM courses WHERE title LIKE ? OR description LIKE ?',
+      [searchTerm, searchTerm]
     );
-    const countResult = countStmt.get(searchTerm, searchTerm);
 
     // Затем получаем результаты с пагинацией
-    const stmt = db.prepare(
-      'SELECT id, title, description FROM courses WHERE title LIKE ? OR description LIKE ? LIMIT ? OFFSET ?'
+    const courses = await all(
+      'SELECT id, title, description FROM courses WHERE title LIKE ? OR description LIKE ? LIMIT ? OFFSET ?',
+      [searchTerm, searchTerm, pageLimit, offset]
     );
-    const courses = stmt.all(searchTerm, searchTerm, pageLimit, offset);
 
     res.json({
       courses: courses,
