@@ -8,12 +8,11 @@
     "dev": "nodemon server.js",
     "init-db": "node init-db.js",
     "test": "jest --detectOpenHandles",
-    "lint": "eslint . --ext .js || true",
-    "postinstall": "npm rebuild better-sqlite3"
+    "lint": "eslint . --ext .js || true"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^12.5.0",
+    "better-sqlite3": "^11.8.1",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
