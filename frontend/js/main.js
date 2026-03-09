@@ -524,19 +524,25 @@ async function showCourseInfo(id, title) {
 
 // Начало курса (переход к обучению)
 async function startCourse(id, title) {
+  // Проверка авторизации
+  if (!currentUser) {
+    navigateTo('login');
+    return;
+  }
+
   try {
     currentCourse = await getCourseById(id);
-    
+
     if (!currentCourse) {
       alert('Курс не найден');
       return;
     }
-    
+
     if (!currentCourse.pages || currentCourse.pages.length === 0) {
       alert('В этом курсе пока нет материалов');
       return;
     }
-    
+
     document.getElementById('course-title').textContent = title || 'Курс';
     currentPageIndex = 0;
     loadCoursePage(currentCourse, currentPageIndex);
