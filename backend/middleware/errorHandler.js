@@ -3,7 +3,7 @@
  * Перенесён из GameLibrary для централизованной обработки ошибок
  */
 
-function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res) {
   console.error('Error:', err);
 
   // MySQL errors

@@ -34,7 +34,7 @@ class User {
 
     if (user && await bcrypt.compare(password, user.password)) {
       // Возвращаем пользователя без пароля для безопасности
-      const { password: _password, ...userWithoutPassword } = user;
+      const { password: _pwd, ...userWithoutPassword } = user;
       return userWithoutPassword;
     }
 
