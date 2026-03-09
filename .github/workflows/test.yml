@@ -36,9 +36,9 @@ jobs:
     - name: Запускаем линтер
       run: npm run lint
 
-    # Шаг 6: Запускаем тесты
+    # Шаг 6: Запускаем тесты из папки backend
     - name: Запускаем тесты
-      run: npm test
+      run: cd backend && npm test
       env:
         NODE_ENV: development
         JWT_SECRET: your-secret-key-here
