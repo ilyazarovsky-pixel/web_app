@@ -41,6 +41,10 @@
   "homepage": "https://github.com/ilyazarovsky-pixel/web_app#readme",
   "dependencies": {
     "compression": "^1.8.1",
+    "express-rate-limit": "^6.10.0",
+    "helmet": "^7.0.0",
+    "joi": "^17.9.2",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "rotating-file-stream": "^3.2.8"
   }

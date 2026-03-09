@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Образовательная платформа</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
   <!-- Используем emoji как favicon — работает во всех современных браузерах -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
@@ -72,6 +73,24 @@
       </header>
 
       <main>
+        <!-- Вкладки: Популярные и Новинки -->
+        <div class="tabs-section">
+          <div class="tabs-grid">
+            <div class="tab-card active" data-tab="all" data-tooltip="Все курсы">
+              <i class="fas fa-th-large"></i>
+              <span>Все курсы</span>
+            </div>
+            <div class="tab-card" data-tab="popular" data-tooltip="Популярные курсы">
+              <i class="fas fa-fire"></i>
+              <span>Популярные</span>
+            </div>
+            <div class="tab-card" data-tab="new" data-tooltip="Новые курсы">
+              <i class="fas fa-star"></i>
+              <span>Новинки</span>
+            </div>
+          </div>
+        </div>
+
         <div class="course-grid" id="main-course-list">
           <!-- Курсы подгружаются из API -->
           <div class="skeleton-card"></div>
@@ -79,12 +98,67 @@
         </div>
       </main>
 
-      <footer>
-        <p>© 2025 MyApp</p>
-      </footer>
-    </section>
+      <!-- Выпадающее меню аккаунта -->
+      <div class="user-menu-content hidden" id="user-menu-content">
+        <!-- Шапка меню -->
+        <div class="user-menu-header">
+          <div class="user-menu-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="user-menu-info">
+            <strong id="menu-username">Пользователь</strong>
+            <span class="user-email" id="menu-email">user@example.com</span>
+          </div>
+        </div>
 
-    <!-- Профиль -->
+        <div class="user-menu-divider"></div>
+
+        <!-- Секции меню -->
+        <div class="user-menu-section">
+          <div class="menu-section-title">Аккаунт</div>
+          <button class="menu-item" id="menu-profile" data-tooltip="Мой профиль">
+            <i class="fas fa-user-circle"></i>
+            <span>Мой профиль</span>
+          </button>
+          <button class="menu-item" id="menu-settings" data-tooltip="Настройки">
+            <i class="fas fa-cog"></i>
+            <span>Настройки</span>
+          </button>
+        </div>
+
+        <div class="user-menu-divider"></div>
+
+        <div class="user-menu-section">
+          <div class="menu-section-title">Информация</div>
+          <button class="menu-item" id="menu-about" data-tooltip="О платформе">
+            <i class="fas fa-info-circle"></i>
+            <span>О платформе</span>
+          </button>
+          <button class="menu-item" id="menu-help" data-tooltip="Помощь и поддержка">
+            <i class="fas fa-question-circle"></i>
+            <span>Помощь</span>
+          </button>
+        </div>
+
+        <div class="user-menu-divider"></div>
+
+        <!-- Выход -->
+        <div class="user-menu-section">
+          <button class="menu-item logout-btn" id="menu-logout" data-tooltip="Выйти из аккаунта">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Выйти</span>
+          </button>
+        </div>
+      </div>
+
+      <main>
+        <div class="course-grid" id="main-course-list">
+          <!-- Курсы подгружаются из API -->
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </main>
+    </section>
     <section id="page-profile" class="page">
       <header>
         <div class="menu-icon" id="profile-back-btn">←</div>
@@ -93,22 +167,129 @@
       </header>
 
       <main>
-        <div class="profile-card">
-          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e0e0e0'/%3E%3Ctext x='50' y='55' font-family='Arial' font-size='14' text-anchor='middle' fill='%23666'%3EАватар%3C/text%3E%3C/svg%3E" alt="Аватар" class="avatar" />
-          <h2 id="profile-name">Загрузка...</h2>
-          <p id="profile-bio">—</p>
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+          <div class="user-avatar">
+            <i class="fas fa-user-circle"></i>
+          </div>
+          <div class="user-welcome">
+            <h2>Добро пожаловать, <span id="dashboard-username">Пользователь</span>!</h2>
+            <p>Управляйте вашим профилем и настройками</p>
+          </div>
+          <div class="user-stats">
+            <div class="stat-card">
+              <i class="fas fa-book"></i>
+              <div class="stat-info">
+                <span class="stat-number" id="dashboard-total-courses">0</span>
+                <span class="stat-label">Курсов</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <i class="fas fa-check-circle"></i>
+              <div class="stat-info">
+                <span class="stat-number" id="dashboard-completed-courses">0</span>
+                <span class="stat-label">Завершено</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <i class="fas fa-clock"></i>
+              <div class="stat-info">
+                <span class="stat-number" id="dashboard-in-progress">0</span>
+                <span class="stat-label">В процессе</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <h3>Ваши курсы</h3>
-        <div class="course-grid" id="profile-course-list">
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
+        <!-- Dashboard Tabs -->
+        <div class="dashboard-tabs">
+          <button class="dashboard-tab active" data-tab="courses">
+            <i class="fas fa-book"></i>
+            <span>Курсы</span>
+          </button>
+          <button class="dashboard-tab" data-tab="settings">
+            <i class="fas fa-cog"></i>
+            <span>Настройки</span>
+          </button>
+          <button class="dashboard-tab" data-tab="activity">
+            <i class="fas fa-history"></i>
+            <span>Активность</span>
+          </button>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+          <!-- Курсы -->
+          <div id="dashboard-courses" class="dashboard-tab-content active">
+            <div class="section-header">
+              <h3><i class="fas fa-book"></i> Мои курсы</h3>
+            </div>
+            <div class="course-grid" id="profile-course-list">
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+            </div>
+          </div>
+
+          <!-- Настройки -->
+          <div id="dashboard-settings" class="dashboard-tab-content">
+            <div class="settings-container">
+              <div class="settings-section">
+                <h4><i class="fas fa-user"></i> Данные профиля</h4>
+                <form id="profile-form" class="settings-form">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Имя *</label>
+                      <input type="text" id="profile-name-input" name="name" placeholder="Ваше имя" required class="full-width-input">
+                    </div>
+                    <div class="form-group">
+                      <label>Email *</label>
+                      <input type="email" id="profile-email-input" name="email" placeholder="your@email.com" required class="full-width-input">
+                    </div>
+                  </div>
+                  <div class="settings-actions">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fas fa-save"></i> Сохранить изменения
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="settings-section">
+                <h4><i class="fas fa-lock"></i> Безопасность</h4>
+                <form id="password-form" class="settings-form">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Текущий пароль *</label>
+                      <input type="password" name="current_password" placeholder="Ваш текущий пароль" required class="full-width-input">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Новый пароль *</label>
+                      <input type="password" name="new_password" id="new-password-input" placeholder="Не менее 4 символов" required minlength="4" class="full-width-input">
+                    </div>
+                  </div>
+                  <div class="settings-actions">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fas fa-key"></i> Сменить пароль
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Активность -->
+          <div id="dashboard-activity" class="dashboard-tab-content">
+            <div class="section-header">
+              <h3><i class="fas fa-history"></i> История активности</h3>
+            </div>
+            <div class="activity-list" id="dashboard-activity-list">
+              <p class="text-muted">История активности пока пуста</p>
+            </div>
+          </div>
         </div>
       </main>
-
-      <footer>
-        <p>© 2025 MyApp</p>
-      </footer>
     </section>
 
     <!-- Страница курса -->
@@ -129,11 +310,104 @@
           </div>
         </div>
       </main>
-
-      <footer>
-        <p>© 2025 MyApp</p>
-      </footer>
     </section>
+
+    <!-- Страница информации о курсе -->
+    <section id="page-course-info" class="page">
+      <header>
+        <div class="menu-icon" id="course-info-back-btn">←</div>
+        <h1 id="course-info-title">Информация о курсе</h1>
+        <div></div>
+      </header>
+
+      <main>
+        <div class="course-info-content">
+          <div class="course-info-header">
+            <img id="course-info-image" src="" alt="Обложка курса" class="course-info-image">
+            <div class="course-info-details">
+              <h2 id="course-info-name"></h2>
+              <p id="course-info-description" class="course-info-desc"></p>
+              <div class="course-info-meta">
+                <span class="course-info-badge" id="course-info-status"></span>
+                <span id="course-info-pages"></span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="course-info-section">
+            <h3><i class="fas fa-book-open"></i> Описание курса</h3>
+            <div id="course-info-full-description" class="course-info-text"></div>
+          </div>
+          
+          <div class="course-info-section">
+            <h3><i class="fas fa-list"></i> Программа курса</h3>
+            <div id="course-info-syllabus" class="course-syllabus"></div>
+          </div>
+          
+          <div class="course-info-actions">
+            <button class="btn btn-primary btn-large" id="course-info-start-btn">
+              <i class="fas fa-play-circle"></i>
+              Начать курс
+            </button>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <!-- Общий футер -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-section">
+            <div class="logo">
+              <i class="fas fa-book-open"></i>
+              <span>LearnHub</span>
+            </div>
+            <p>Образовательная платформа для современного обучения. Изучайте новое каждый день!</p>
+            <div class="social-links">
+              <a href="https://vk.com" target="_blank" rel="noopener noreferrer" data-tooltip="Мы ВКонтакте"><i class="fab fa-vk"></i></a>
+              <a href="https://t.me" target="_blank" rel="noopener noreferrer" data-tooltip="Наш Telegram канал"><i class="fab fa-telegram"></i></a>
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" data-tooltip="Наш YouTube канал"><i class="fab fa-youtube"></i></a>
+            </div>
+          </div>
+          <div class="footer-section">
+            <h4>Курсы</h4>
+            <ul>
+              <li><a href="#" class="footer-link" data-action="all">Все курсы</a></li>
+              <li><a href="#" class="footer-link" data-action="popular">Популярные</a></li>
+              <li><a href="#" class="footer-link" data-action="new">Новинки</a></li>
+              <li><a href="#" class="footer-link" data-action="profile">Мои курсы</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Поддержка</h4>
+            <ul>
+              <li><a href="#" class="footer-link" data-action="help">Помощь</a></li>
+              <li><a href="#" class="footer-link" data-action="faq">FAQ</a></li>
+              <li><a href="#" class="footer-link" data-action="contacts">Контакты</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Подписка</h4>
+            <p>Будьте в курсе новых курсов и специальных предложений</p>
+            <div class="newsletter">
+              <input type="email" id="newsletter-email" placeholder="Ваш email">
+              <button class="btn btn-primary" id="newsletter-btn" data-tooltip="Подписаться на рассылку">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+            <p id="newsletter-message" class="newsletter-message"></p>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 LearnHub. Все права защищены.</p>
+          <div class="footer-bottom-links">
+            <a href="#" id="policy-link">Политика конфиденциальности</a>
+            <a href="#" id="terms-link">Условия использования</a>
+          </div>
+        </div>
+      </div>
+    </footer>
 
     <div id="mobile-menu" class="mobile-menu">
       <div class="menu-header">
@@ -141,23 +415,219 @@
         <span class="close-menu-btn" id="close-menu-btn">←</span>
       </div>
       <div class="menu-content">
-        <div class="menu-item" id="menu-main-btn">Главная</div>
-        <div class="menu-item" id="menu-profile-btn">Профиль</div>
-        <div class="menu-item" id="menu-logout-btn">Выйти</div>
+        <div class="menu-item" id="menu-main-btn">
+          <i class="fas fa-home"></i>
+          Главная
+        </div>
+        <div class="menu-item" id="menu-profile-btn">
+          <i class="fas fa-user-circle"></i>
+          Профиль
+        </div>
+        <div class="menu-item logout-btn" id="menu-logout-btn">
+          <i class="fas fa-sign-out-alt"></i>
+          Выйти
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ✅ Модальное окно: Курс завершён -->
-  <div id="completion-modal" class="modal">
-    <div class="modal-content">
-      <span class="close-btn" id="modal-close-btn">&times;</span>
-      <h2>🎓 Курс завершён!</h2>
-      <p id="modal-message">Поздравляем! Вы успешно завершили курс.</p>
-      <button class="modal-btn" id="modal-main-btn">На главную</button>
+    <!-- Оверлей для мобильного меню -->
+    <div id="mobile-menu-overlay" class="mobile-menu-overlay"></div>
+
+    <!-- ✅ Модальное окно: Курс завершён -->
+    <div id="completion-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" id="modal-close-btn">&times;</span>
+        <h2>🎓 Курс завершён!</h2>
+        <p id="modal-message">Поздравляем! Вы успешно завершили курс.</p>
+        <button class="modal-btn" id="modal-main-btn">На главную</button>
+      </div>
     </div>
-  </div>
 
-  <script src="js/main.js"></script>
+    <!-- ✅ Модальное окно: Подтверждение выхода -->
+    <div id="logout-modal" class="modal">
+      <div class="modal-content logout-modal-content">
+        <span class="close-btn" id="logout-modal-close">&times;</span>
+        <div class="logout-modal-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h2>Выход из аккаунта</h2>
+        <p>Вы уверены, что хотите выйти из аккаунта?</p>
+        <div class="logout-modal-actions">
+          <button class="btn btn-outline" id="logout-modal-cancel">
+            <i class="fas fa-times"></i>
+            Отмена
+          </button>
+          <button class="btn btn-danger" id="logout-modal-confirm">
+            <i class="fas fa-sign-out-alt"></i>
+            Выйти
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✅ Модальное окно: Помощь -->
+    <div id="help-modal" class="modal">
+      <div class="modal-content help-modal-content">
+        <span class="close-btn" id="close-help-btn">&times;</span>
+        <h2><i class="fas fa-question-circle"></i> Помощь</h2>
+        
+        <div class="help-section">
+          <h3><i class="fas fa-info-circle"></i> О платформе</h3>
+          <p>LearnHub — это современная образовательная платформа для изучения новых технологий. Мы предлагаем качественные курсы по программированию, веб-разработке и другим направлениям.</p>
+        </div>
+
+        <div class="help-section">
+          <h3><i class="fas fa-headset"></i> Как мы помогаем</h3>
+          <p>Наша команда поддержки готова помочь вам с любыми вопросами по использованию платформы. Мы отвечаем в течение 24 часов в рабочие дни.</p>
+        </div>
+
+        <div class="help-section">
+          <h3><i class="fas fa-book-open"></i> Учебные материалы</h3>
+          <p>На платформе вы найдете подробные руководства, видеоуроки и практические задания для эффективного обучения.</p>
+        </div>
+
+        <button class="btn btn-primary" id="close-help-btn-footer">
+          <i class="fas fa-check"></i> Понятно
+        </button>
+      </div>
+    </div>
+
+    <!-- ✅ Модальное окно: FAQ -->
+    <div id="faq-modal" class="modal">
+      <div class="modal-content help-modal-content">
+        <span class="close-btn" id="close-faq-btn">&times;</span>
+        <h2><i class="fas fa-comments"></i> Часто задаваемые вопросы</h2>
+        
+        <div class="help-section">
+          <div class="faq-item">
+            <strong>Как начать обучение?</strong>
+            <p>Зарегистрируйтесь на платформе, выберите интересующий курс и нажмите «Начать курс».</p>
+          </div>
+          <div class="faq-item">
+            <strong>Сколько стоят курсы?</strong>
+            <p>Все курсы на нашей платформе бесплатные.</p>
+          </div>
+          <div class="faq-item">
+            <strong>Как отслеживать прогресс?</strong>
+            <p>Ваш прогресс автоматически сохраняется в личном кабинете в разделе «Мои курсы».</p>
+          </div>
+          <div class="faq-item">
+            <strong>Можно ли получить сертификат?</strong>
+            <p>Да, после успешного завершения курса вы получите электронный сертификат.</p>
+          </div>
+          <div class="faq-item">
+            <strong>Сколько времени занимает курс?</strong>
+            <p>Время зависит от курса. В среднем от 2 до 10 часов на прохождение.</p>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="close-faq-btn-footer">
+          <i class="fas fa-check"></i> Понятно
+        </button>
+      </div>
+    </div>
+
+    <!-- ✅ Модальное окно: Контакты -->
+    <div id="contacts-modal" class="modal">
+      <div class="modal-content help-modal-content">
+        <span class="close-btn" id="close-contacts-btn">&times;</span>
+        <h2><i class="fas fa-address-book"></i> Контакты</h2>
+        
+        <div class="help-section">
+          <h3><i class="fas fa-envelope"></i> Электронная почта</h3>
+          <p><strong>Поддержка:</strong> support@learnhub.ru</p>
+          <p><strong>По вопросам сотрудничества:</strong> sales@learnhub.ru</p>
+        </div>
+
+        <div class="help-section">
+          <h3><i class="fab fa-telegram"></i> Мессенджеры</h3>
+          <p><strong>Telegram:</strong> @learnhub_support</p>
+          <p><strong>ВКонтакте:</strong> vk.com/learnhub</p>
+        </div>
+
+        <div class="help-section">
+          <h3><i class="fas fa-clock"></i> Время работы</h3>
+          <p><strong>Пн-Пт:</strong> 10:00-18:00 (МСК)</p>
+          <p><strong>Сб-Вс:</strong> Выходной</p>
+          <p><strong>Среднее время ответа:</strong> 2-4 часа</p>
+        </div>
+
+        <div class="help-section">
+          <h3><i class="fas fa-map-marker-alt"></i> Адрес</h3>
+          <p>г. Москва, ул. Образовательная, д. 1</p>
+        </div>
+
+        <button class="btn btn-primary" id="close-contacts-btn-footer">
+          <i class="fas fa-check"></i> Понятно
+        </button>
+      </div>
+    </div>
+
+    <!-- ✅ Модальное окно: Политика конфиденциальности -->
+    <div id="policy-modal" class="modal">
+      <div class="modal-content policy-modal-content">
+        <span class="close-btn" id="close-policy-btn">&times;</span>
+        <h2><i class="fas fa-shield-alt"></i> Политика конфиденциальности</h2>
+        
+        <div class="policy-section">
+          <h3>1. Сбор информации</h3>
+          <p>Мы собираем только необходимую информацию: имя, email и дату рождения для регистрации и предоставления доступа к курсам.</p>
+        </div>
+
+        <div class="policy-section">
+          <h3>2. Использование информации</h3>
+          <p>Ваша информация используется исключительно для предоставления образовательных услуг и улучшения качества платформы.</p>
+        </div>
+
+        <div class="policy-section">
+          <h3>3. Защита данных</h3>
+          <p>Мы используем современные методы шифрования и защиты данных. Ваша информация не передается третьим лицам.</p>
+        </div>
+
+        <div class="policy-section">
+          <h3>4. Ваши права</h3>
+          <p>Вы имеете право на доступ, исправление и удаление ваших персональных данных в любой момент.</p>
+        </div>
+
+        <button class="btn btn-primary" id="close-policy-btn-footer">
+          <i class="fas fa-check"></i> Принять
+        </button>
+      </div>
+    </div>
+
+    <!-- ✅ Модальное окно: Условия использования -->
+    <div id="terms-modal" class="modal">
+      <div class="modal-content terms-modal-content">
+        <span class="close-btn" id="close-terms-btn">&times;</span>
+        <h2><i class="fas fa-file-contract"></i> Условия использования</h2>
+        
+        <div class="terms-section">
+          <h3>1. Общие положения</h3>
+          <p>Используя платформу LearnHub, вы соглашаетесь с данными условиями. Если вы не согласны, пожалуйста, не используйте сервис.</p>
+        </div>
+
+        <div class="terms-section">
+          <h3>2. Правила поведения</h3>
+          <p>Запрещено размещать неправомерный контент, оскорблять других пользователей и нарушать работу платформы.</p>
+        </div>
+
+        <div class="terms-section">
+          <h3>3. Интеллектуальная собственность</h3>
+          <p>Все материалы курсов защищены авторским правом. Копирование и распространение без разрешения запрещено.</p>
+        </div>
+
+        <div class="terms-section">
+          <h3>4. Ограничение ответственности</h3>
+          <p>Платформа предоставляется «как есть». Мы не гарантируем получение конкретных результатов после прохождения курсов.</p>
+        </div>
+
+        <button class="btn btn-primary" id="close-terms-btn-footer">
+          <i class="fas fa-check"></i> Принять
+        </button>
+      </div>
+    </div>
+
+    <script src="js/main.js?v=29"></script>
+  </div>
 </body>
 </html>
