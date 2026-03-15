@@ -6,11 +6,11 @@ let authToken = null;
 function toggleUserMenu() {
   const menu = document.getElementById('user-menu-content');
   const overlay = document.getElementById('user-menu-overlay');
-  
+
   if (!menu) return;
-  
+
   const isHidden = menu.classList.contains('hidden');
-  
+
   if (isHidden) {
     menu.classList.remove('hidden');
     overlay?.classList.add('active');
@@ -23,7 +23,7 @@ function toggleUserMenu() {
 function closeUserMenu() {
   const menu = document.getElementById('user-menu-content');
   const overlay = document.getElementById('user-menu-overlay');
-  
+
   menu?.classList.add('hidden');
   overlay?.classList.remove('active');
 }
@@ -32,7 +32,7 @@ function updateUserMenuContent() {
   const menuUsername = document.getElementById('menu-username');
   const menuEmail = document.getElementById('menu-email');
   const userNameDisplay = document.getElementById('user-name-display');
-  
+
   if (currentUser) {
     if (menuUsername) menuUsername.textContent = currentUser.name || 'Пользователь';
     if (menuEmail) menuEmail.textContent = currentUser.email || '';
@@ -130,9 +130,9 @@ window.navigateTo = function(pageId) {
 window.toggleMenu = function() {
   const menu = document.getElementById('mobile-menu');
   const overlay = document.getElementById('mobile-menu-overlay');
-  
+
   if (!menu) return;
-  
+
   menu.classList.toggle('active');
   if (overlay) {
     overlay.classList.toggle('active');
@@ -273,7 +273,7 @@ function loadProfileStats() {
   const allCourses = JSON.parse(localStorage.getItem('userCourses') || '[]');
   const completedCourses = allCourses.filter(c => c.completed).length;
   const inProgressCourses = allCourses.filter(c => !c.completed).length;
-  
+
   document.getElementById('dashboard-total-courses').textContent = allCourses.length;
   document.getElementById('dashboard-completed-courses').textContent = completedCourses;
   document.getElementById('dashboard-in-progress').textContent = inProgressCourses;
@@ -460,26 +460,26 @@ async function showCourseInfo(id, title) {
   document.getElementById('course-info-name').textContent = course.title;
   document.getElementById('course-info-description').textContent = course.description || 'Описание курса';
   document.getElementById('course-info-full-description').textContent = course.fullDescription || course.description || 'Подробное описание курса';
-  
+
   // Изображение
   const imageSrc = course.image || 'assets/images/course-default.svg';
   document.getElementById('course-info-image').src = imageSrc;
   document.getElementById('course-info-image').onerror = function() {
     this.src = 'assets/images/course-default.svg';
   };
-  
+
   // Статус и бейдж
   const isCompleted = course.completed || false;
   const statusBadge = document.getElementById('course-info-status');
   statusBadge.textContent = isCompleted ? 'ЗАВЕРШЁН' : 'ДОСТУПЕН';
   statusBadge.className = 'course-info-badge ' + (isCompleted ? 'completed' : '');
-  
+
   // Количество страниц
   const pageCount = course.pages ? course.pages.length : 0;
   document.getElementById('course-info-pages').innerHTML = `
     <i class="fas fa-book-open"></i> ${pageCount} страниц
   `;
-  
+
   // Программа курса
   const syllabusContainer = document.getElementById('course-info-syllabus');
   if (course.pages && course.pages.length > 0) {
@@ -510,7 +510,7 @@ async function showCourseInfo(id, title) {
   } else {
     syllabusContainer.innerHTML = '<p class="text-muted">Программа курса пока пуста</p>';
   }
-  
+
   // Кнопка "Начать курс"
   const startBtn = document.getElementById('course-info-start-btn');
   startBtn.onclick = () => startCourse(course.id, course.title);
@@ -518,7 +518,7 @@ async function showCourseInfo(id, title) {
     <i class="fas fa-play-circle"></i>
     ${isCompleted ? 'Повторить курс' : 'Начать курс'}
   `;
-  
+
   navigateTo('course-info');
 }
 
@@ -586,12 +586,18 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
 
   const name = document.querySelector('#registerForm input[placeholder="Имя"]').value.trim();
   const email = document.querySelector('#registerForm input[placeholder="Email"]').value.trim();
-  const password = document.querySelector('#registerForm input[placeholder="Пароль (≥4 символа)"]').value;
+  const password = document.querySelector('#registerForm input[placeholder="Пароль (≥8 символов, буквы и цифры)"]').value;
   const birthDateString = document.getElementById('birthDate')?.value;
 
-  // ✅ 1. Пароль ≥4 символов (повторная проверка, даже если minlength=4)
-  if (password.length < 4) {
-    alert('❌ Пароль должен содержать не менее 4 символов');
+  // ✅ 1. Пароль ≥8 символов, буквы и цифры
+  if (password.length < 8) {
+    alert('❌ Пароль должен содержать не менее 8 символов');
+    return;
+  }
+
+  // Проверка наличия букв и цифр
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    alert('❌ Пароль должен содержать буквы и цифры');
     return;
   }
 
@@ -626,7 +632,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    
+
     if (!res.ok) {
       // Обработка различных HTTP ошибок
       if (res.status === 400) {
@@ -639,7 +645,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
       }
       return;
     }
-    
+
     const result = await res.json();
 
     if (result.success) {
@@ -693,7 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       currentUser = JSON.parse(savedUser);
       authToken = savedToken;
-      
+
       // Обновляем меню пользователя
       showUserMenuIfLoggedIn();
       navigateTo('main');
@@ -706,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Если нет сохраненной сессии, остаемся на странице входа (она активна по умолчанию в HTML)
     navigateTo('login');
   }
-  
+
   // Добавляем обработчики для кнопок навигации
   const profileBackBtn = document.getElementById('profile-back-btn');
   const courseBackBtn = document.getElementById('course-back-btn');
@@ -906,23 +912,113 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ========== ОБРАБОТЧИКИ ДЛЯ ПОИСКА КУРСОВ ==========
+  const searchInput = document.getElementById('course-search-input');
+  const searchBtn = document.getElementById('search-btn');
+  const clearSearchBtn = document.getElementById('clear-search-btn');
+
+  // Поиск при вводе (с задержкой 300ms)
+  let searchTimeout = null;
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const query = this.value.trim();
+
+      // Показываем/скрываем кнопку очистки
+      if (clearSearchBtn) {
+        clearSearchBtn.style.display = query.length > 0 ? 'flex' : 'none';
+      }
+
+      // Debounce поиск
+      clearTimeout(searchTimeout);
+      if (query.length >= 2) {
+        searchTimeout = setTimeout(() => {
+          performSearch(query);
+        }, 300);
+      } else if (query.length === 0) {
+        // Если поиск очищен, загружаем все курсы
+        loadCoursesWithFilter('main-course-list', window.currentTab || 'all');
+      }
+    });
+
+    // Поиск по Enter
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = this.value.trim();
+        if (query.length >= 2) {
+          performSearch(query);
+        }
+      }
+    });
+  }
+
+  // Поиск по кнопке
+  if (searchBtn) {
+    searchBtn.addEventListener('click', function() {
+      const query = searchInput.value.trim();
+      if (query.length >= 2) {
+        performSearch(query);
+      }
+    });
+  }
+
+  // Очистка поиска
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      clearSearchBtn.style.display = 'none';
+      searchInput.focus();
+      loadCoursesWithFilter('main-course-list', window.currentTab || 'all');
+    });
+  }
+
+  // Функция поиска курсов
+  window.performSearch = async function(query) {
+    try {
+      console.log('Поиск:', query);
+      const res = await fetch(`/api/courses/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      console.log('Результаты поиска:', data);
+
+      const container = document.getElementById('main-course-list');
+      if (container) {
+        container.innerHTML = '';
+
+        if (data.courses && data.courses.length > 0) {
+          data.courses.forEach(course => {
+            const courseCard = createCourseCard(course, false);
+            container.appendChild(courseCard);
+          });
+        } else {
+          container.innerHTML = '<p class="text-muted">Курсы не найдены</p>';
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка поиска:', err);
+      const container = document.getElementById('main-course-list');
+      if (container) {
+        container.innerHTML = '<p class="error">Ошибка при поиске курсов</p>';
+      }
+    }
+  };
+
   // ========== ОБРАБОТЧИКИ DASHBOARD / ПРОФИЛЯ ==========
   // Переключение вкладок
   const dashboardTabs = document.querySelectorAll('.dashboard-tab');
   dashboardTabs.forEach(tab => {
     tab.addEventListener('click', function() {
       const targetTab = this.getAttribute('data-tab');
-      
+
       // Убираем активный класс у всех вкладок
       dashboardTabs.forEach(t => t.classList.remove('active'));
       // Добавляем активный класс текущей вкладке
       this.classList.add('active');
-      
+
       // Скрываем все содержимое
       document.querySelectorAll('.dashboard-tab-content').forEach(content => {
         content.classList.remove('active');
       });
-      
+
       // Показываем нужное содержимое
       const targetContent = document.getElementById(`dashboard-${targetTab}`);
       if (targetContent) {
@@ -938,19 +1034,19 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const name = document.getElementById('profile-name-input').value.trim();
       const email = document.getElementById('profile-email-input').value.trim();
-      
+
       if (!name || !email) {
         alert('Заполните все обязательные поля');
         return;
       }
-      
+
       // Сохраняем в localStorage
       if (currentUser) {
         currentUser.name = name;
         currentUser.email = email;
         localStorage.setItem('user', JSON.stringify(currentUser));
       }
-      
+
       alert('✅ Профиль обновлён!');
       document.getElementById('dashboard-username').textContent = name;
     });
@@ -963,17 +1059,23 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const currentPassword = passwordForm.querySelector('[name="current_password"]').value;
       const newPassword = passwordForm.querySelector('[name="new_password"]').value;
-      
+
       if (!currentPassword || !newPassword) {
         alert('Заполните все поля');
         return;
       }
-      
-      if (newPassword.length < 4) {
-        alert('Новый пароль должен быть не менее 4 символов');
+
+      if (newPassword.length < 8) {
+        alert('Новый пароль должен быть не менее 8 символов');
         return;
       }
-      
+
+      // Проверка наличия букв и цифр
+      if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+        alert('Пароль должен содержать буквы и цифры');
+        return;
+      }
+
       // Здесь будет API вызов для смены пароля
       alert('✅ Пароль изменён! (демо режим)');
       passwordForm.reset();
@@ -1008,7 +1110,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    
+
     if (!res.ok) {
       // Обработка различных HTTP ошибок
       if (res.status === 400) {
@@ -1026,7 +1128,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
       errorEl.classList.add('show');
       return;
     }
-    
+
     const result = await res.json();
 
     if (result.success) {
@@ -1073,7 +1175,9 @@ window.switchTab = function(tabName) {
 window.loadCoursesWithFilter = async function(containerId, filter) {
   try {
     const res = await fetch('/api/courses');
-    let courses = await res.json();
+    const data = await res.json();
+    // API возвращает { courses: [...], pagination: {...} }
+    let courses = data.courses || [];
     const container = document.getElementById(containerId);
 
     // Очищаем контейнер
@@ -1095,6 +1199,7 @@ window.loadCoursesWithFilter = async function(containerId, filter) {
       container.appendChild(courseCard);
     });
   } catch (err) {
+    console.error('Ошибка загрузки курсов:', err);
     const container = document.getElementById(containerId);
     if (container) {
       container.innerHTML = '<p class="error">Ошибка загрузки курсов</p>';
@@ -1250,7 +1355,7 @@ document.addEventListener('DOMContentLoaded', function() {
     link.addEventListener('click', function(e) {
       e.preventDefault();
       const action = this.getAttribute('data-action');
-      
+
       switch(action) {
         case 'all':
         case 'popular':
@@ -1283,14 +1388,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Ссылки на политику и условия
   const policyLink = document.getElementById('policy-link');
   const termsLink = document.getElementById('terms-link');
-  
+
   if (policyLink) {
     policyLink.addEventListener('click', function(e) {
       e.preventDefault();
       window.showPolicyModal();
     });
   }
-  
+
   if (termsLink) {
     termsLink.addEventListener('click', function(e) {
       e.preventDefault();
@@ -1337,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('click', (e) => {
     const faqModal = document.getElementById('faq-modal');
     const contactsModal = document.getElementById('contacts-modal');
-    
+
     if (e.target === faqModal) {
       window.closeFaqModal();
     }

@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { get, all } = require('../utils/database');
 
-// GET /courses/search?q=javascript&page=1&limit=10
+// GET /api/courses/search?q=javascript&page=1&limit=10
+// Примечание: Поиск реализован через /api/courses?q=javascript
+// Этот маршрут оставлен для обратной совместимости
 router.get('/courses/search', async (req, res) => {
   const { q, page = 1, limit = 10 } = req.query;
 
@@ -13,16 +15,14 @@ router.get('/courses/search', async (req, res) => {
 
   const searchTerm = `%${q.trim()}%`;
   const offset = (parseInt(page) - 1) * parseInt(limit);
-  const pageLimit = Math.min(parseInt(limit), 50); // максимум 50 на страницу
+  const pageLimit = Math.min(parseInt(limit), 50);
 
   try {
-    // Сначала получаем общее количество результатов
     const countResult = await get(
       'SELECT COUNT(*) as total FROM courses WHERE title LIKE ? OR description LIKE ?',
       [searchTerm, searchTerm]
     );
 
-    // Затем получаем результаты с пагинацией
     const courses = await all(
       'SELECT id, title, description FROM courses WHERE title LIKE ? OR description LIKE ? LIMIT ? OFFSET ?',
       [searchTerm, searchTerm, pageLimit, offset]

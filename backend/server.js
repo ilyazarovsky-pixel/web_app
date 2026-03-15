@@ -7,6 +7,8 @@ const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 const rfs = require('rotating-file-stream');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./utils/swagger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -121,6 +123,7 @@ app.use(generalLimiter);
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend'))); // Сервим фронтенд
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Сервим загруженные файлы
 
 // Применяем строгий лимит только к авторизации
 app.use('/api/auth/login', authLimiter);
@@ -133,10 +136,24 @@ app.get('/favicon.ico', (req, res) => {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api', require('./routes/courses')); // Поиск курсов должен быть перед /courses/:id
 app.use('/api', require('./routes/api'));
+app.use('/api', require('./routes/categories'));
+app.use('/api', require('./routes/admin'));
 app.use(require('./routes/profile'));
 app.use(require('./routes/courses'));
 app.use(require('./routes/stats'));
+app.use(require('./routes/enrollments'));
+app.use(require('./routes/progress'));
+app.use(require('./routes/favorites'));
+app.use(require('./routes/reviews'));
+
+// Swagger документация
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'LearnHub API Docs'
+}));
 
 // Главная страница (перенаправление на авторизацию)
 app.get('/', (req, res) => {
@@ -150,14 +167,18 @@ app.use((req, res) => {
 });
 
 // Глобальный обработчик ошибок
-// Ловит все необработанные ошибки и возвращает понятный ответ
-app.use((err, req, res) => {
+// КРИТИЧНО: Express требует РОВНО 4 параметра для error middleware!
+// Даже если _next не используется — он должен быть в сигнатуре
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
   // Логируем ошибку для разработчика
   console.error('Ошибка:', err.message);
-  console.error('Stack:', err.stack);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Stack:', err.stack);
+  }
 
   // Определяем статус ответа
-  const statusCode = err.status || 500;
+  const statusCode = err.status || err.statusCode || 500;
 
   // В production не показываем детали ошибки
   const message = process.env.NODE_ENV === 'production'
@@ -165,6 +186,7 @@ app.use((err, req, res) => {
     : err.message;
 
   res.status(statusCode).json({
+    success: false,
     error: {
       message: message,
       status: statusCode

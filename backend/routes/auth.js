@@ -7,6 +7,8 @@ const {
   validateBirthDate,
   validateAge
 } = require('../utils/validation');
+const { generateTokens } = require('../middleware/auth');
+const { run, get } = require('../utils/database');
 const router = express.Router();
 
 // Обновлённый обработчик регистрации
@@ -31,7 +33,7 @@ router.post('/register', async (req, res) => {
   if (!validatePassword(password)) {
     return res.status(400).json({
       success: false,
-      message: 'Пароль должен содержать не менее 4 символов'
+      message: 'Пароль должен содержать минимум 8 символов, включая буквы и цифры'
     });
   }
 
@@ -77,8 +79,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-const { generateToken } = require('../middleware/auth');
-
 // Обновлённый обработчик входа
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -94,7 +94,7 @@ router.post('/login', async (req, res) => {
   if (!validatePassword(password)) {
     return res.status(400).json({
       success: false,
-      message: 'Пароль должен содержать не менее 4 символов'
+      message: 'Пароль должен содержать минимум 8 символов, включая буквы и цифры'
     });
   }
 
@@ -102,13 +102,18 @@ router.post('/login', async (req, res) => {
     const user = await User.validatePassword(email, password);
 
     if (user) {
-      // Генерируем JWT токен
-      const token = generateToken(user.id);
+      // Получаем token_version пользователя
+      const userData = await get('SELECT token_version FROM users WHERE id = ?', [user.id]);
+      const tokenVersion = userData?.token_version || 0;
+
+      // Генерируем пару токенов
+      const tokens = generateTokens(user.id, tokenVersion);
 
       res.json({
         success: true,
         message: 'Вход выполнен',
-        token,
+        ...tokens,
+        token: tokens.accessToken, // Для обратной совместимости с фронтендом
         user: { id: user.id, name: user.name }
       });
     } else {
@@ -122,6 +127,83 @@ router.post('/login', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Ошибка сервера при входе'
+    });
+  }
+});
+
+// POST /auth/refresh — обновить пару токенов
+router.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      success: false,
+      message: 'Refresh token не предоставлен'
+    });
+  }
+
+  const jwt = require('jsonwebtoken');
+  const SECRET = process.env.JWT_SECRET || 'dev-only-unsafe-key';
+
+  try {
+    const decoded = jwt.verify(refreshToken, SECRET);
+
+    // Проверяем тип токена — должен быть refresh
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ error: 'Неверный тип токена' });
+    }
+
+    // Получаем текущую версию токена пользователя
+    const userData = await get('SELECT token_version FROM users WHERE id = ?', [decoded.id]);
+
+    if (!userData) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    // Проверяем версию токена (защита от replay attacks)
+    if (decoded.version !== userData.token_version) {
+      return res.status(401).json({ error: 'Токен устарел. Войдите заново' });
+    }
+
+    // Генерируем новую пару токенов
+    const tokens = generateTokens(decoded.id, userData.token_version);
+
+    res.json({
+      success: true,
+      ...tokens
+    });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Refresh token истёк' });
+    }
+    return res.status(401).json({ error: 'Недействительный refresh token' });
+  }
+});
+
+// POST /auth/logout — выход с инвалидацией токена
+router.post('/logout', async (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: 'userId не предоставлен'
+    });
+  }
+
+  try {
+    // Увеличиваем token_version, что делает все старые токены недействительными
+    await run('UPDATE users SET token_version = token_version + 1 WHERE id = ?', [userId]);
+
+    res.json({
+      success: true,
+      message: 'Выход выполнен успешно'
+    });
+  } catch (err) {
+    console.error('Ошибка при выходе:', err.message);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка сервера при выходе'
     });
   }
 });

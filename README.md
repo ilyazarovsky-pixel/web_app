@@ -6,8 +6,24 @@
 
 - **Backend:** Node.js, Express
 - **Database:** SQLite
-- **Auth:** JWT (JSON Web Tokens)
+- **Auth:** JWT (JSON Web Tokens) с Refresh токенами
 - **Containerization:** Docker
+- **File Upload:** Multer
+- **Email:** Nodemailer
+- **API Docs:** Swagger UI
+
+## Возможности
+
+- ✅ Регистрация и аутентификация (JWT + Refresh токены)
+- ✅ Просмотр и поиск курсов по категориям
+- ✅ Запись на курсы и отслеживание прогресса
+- ✅ Избранные курсы
+- ✅ Отзывы и рейтинги курсов
+- ✅ Редактирование профиля и загрузка аватара
+- ✅ Удаление аккаунта
+- ✅ Админ-панель для управления курсами и пользователями
+- ✅ Email уведомления (приветствие, сброс пароля)
+- ✅ Swagger документация API
 
 ## Быстрый старт
 
@@ -44,13 +60,10 @@
 docker-compose up --build
 ```
 
-## Тестирование
-
-```bash
-npm test
-```
-
 ## API документация
+
+После запуска сервера откройте Swagger UI:
+- **Swagger:** http://localhost:3000/api-docs
 
 Подробное описание API — в файле [API.md](./API.md)
 
@@ -59,8 +72,21 @@ npm test
 ```
 ├── backend/
 │   ├── server.js          # Основной сервер Express
+│   ├── middleware/        # Middleware (auth, roles, upload)
 │   ├── routes/            # Маршруты API
-│   ├── utils/             # Утилиты (валидация и др.)
+│   │   ├── auth.js        # Аутентификация
+│   │   ├── profile.js     # Профиль пользователя
+│   │   ├── api.js         # Курсы
+│   │   ├── categories.js  # Категории
+│   │   ├── enrollments.js # Запись на курсы
+│   │   ├── progress.js    # Прогресс
+│   │   ├── favorites.js   # Избранное
+│   │   ├── reviews.js     # Отзывы
+│   │   ├── admin.js       # Админ-панель
+│   │   └── ...
+│   ├── models/            # Модели данных
+│   ├── utils/             # Утилиты (БД, валидация, email, swagger)
+│   ├── uploads/           # Загруженные файлы (аватары)
 │   └── data/              # SQLite база данных
 ├── frontend/
 │   ├── index.html         # Главная страница
@@ -69,5 +95,25 @@ npm test
 ├── .github/workflows/     # CI/CD (GitHub Actions)
 ├── Dockerfile             # Конфигурация Docker
 ├── docker-compose.yml     # Docker Compose
-└── API.md                 # Документация API
+├── API.md                 # Документация API
+└── README.md              # Этот файл
+```
+
+## Переменные окружения
+
+См. `.env.example`:
+- `JWT_SECRET` — секретный ключ для JWT (обязательно в production!)
+- `SMTP_*` — настройки SMTP сервера для email уведомлений
+
+## Роли пользователей
+
+- **user** — обычный пользователь
+- **admin** — администратор (может управлять курсами и пользователялями)
+
+Для назначения роли администратора используйте API:
+```bash
+PUT /api/admin/users/:id/role
+{
+  "role": "admin"
+}
 ```
