@@ -81,6 +81,9 @@ const createTables = () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
+        full_description TEXT,
+        image TEXT,
+        status TEXT DEFAULT 'active',
         category_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (category_id) REFERENCES categories(id)
@@ -89,6 +92,10 @@ const createTables = () => {
   } else {
     // Добавляем category_id если её нет
     try { db.run('ALTER TABLE courses ADD COLUMN category_id INTEGER'); } catch {}
+    // Добавляем новые поля для страниц курсов
+    try { db.run('ALTER TABLE courses ADD COLUMN full_description TEXT'); } catch {}
+    try { db.run('ALTER TABLE courses ADD COLUMN image TEXT'); } catch {}
+    try { db.run('ALTER TABLE courses ADD COLUMN status TEXT DEFAULT \'active\''); } catch {}
   }
 
   // Таблица записей на курсы
@@ -137,6 +144,22 @@ const createTables = () => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, course_id)
+    )
+  `);
+
+  // Таблица страниц курсов
+  db.run(`
+    CREATE TABLE IF NOT EXISTS course_pages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT,
+      page_type TEXT DEFAULT 'text',
+      video_url TEXT,
+      diagram_data TEXT,
+      page_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
     )
   `);
 };
@@ -306,6 +329,140 @@ const seedCourses = () => {
   saveDb();
 
   console.log(`✅ Добавлено ${newCourses.length} курсов в БД`);
+
+  // Заполняем страницы курсов
+  seedCoursePages(categoryIds);
+};
+
+// Заполнение страниц курсов
+const seedCoursePages = (categoryIds) => {
+  console.log('📄 Проверка страниц курсов...');
+
+  // Проверяем количество страниц
+  const pagesStmt = db.prepare('SELECT COUNT(*) as count FROM course_pages');
+  pagesStmt.step();
+  const pagesResult = pagesStmt.getAsObject();
+  pagesStmt.free();
+
+  if (pagesResult.count > 0) {
+    console.log(`📄 Страницы уже есть (${pagesResult.count} шт)`);
+    return;
+  }
+
+  console.log('📄 Заполняем страницы курсов...');
+
+  // Получаем ID курсов
+  const courseIds = {};
+  const getCourseStmt = db.prepare('SELECT id, title FROM courses');
+  while (getCourseStmt.step()) {
+    const row = getCourseStmt.getAsObject();
+    courseIds[row.title] = row.id;
+  }
+  getCourseStmt.free();
+
+  const insertPageStmt = db.prepare(`
+    INSERT INTO course_pages (course_id, title, content, page_type, page_order)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  const pages = [
+    // Курс: Основы программирования
+    {
+      courseTitle: 'Основы программирования',
+      title: 'Введение в программирование',
+      content: '<p>Программирование — это процесс создания компьютерных программ. В этом курсе мы изучим основные концепции, которые лежат в основе любого языка программирования.</p><h3>Что вы узнаете:</h3><ul><li>Что такое переменные и типы данных</li><li>Как работать с условными операторами</li><li>Как использовать циклы</li><li>Как создавать функции</li></ul>',
+      type: 'text',
+      order: 1
+    },
+    {
+      courseTitle: 'Основы программирования',
+      title: 'Переменные и типы данных',
+      content: '<p>Переменная — это именованная область памяти, в которой хранится значение. В программировании важно понимать, какие типы данных существуют.</p><h3>Основные типы данных:</h3><ul><li><strong>Числа</strong> — целые (1, 42, -10) и дробные (3.14, -0.5)</li><li><strong>Строки</strong> — текст в кавычках ("Привет", \'World\')</li><li><strong>Булевы значения</strong> — true (истина) и false (ложь)</li><li><strong>Массивы</strong> — упорядоченные наборы значений</li></ul>',
+      type: 'text',
+      order: 2
+    },
+    {
+      courseTitle: 'Основы программирования',
+      title: 'Видео: Работа с переменными',
+      content: 'Изучите на практике, как объявлять и использовать переменные в коде.',
+      type: 'video',
+      order: 3
+    },
+    {
+      courseTitle: 'Основы программирования',
+      title: 'Схема: Структура программы',
+      content: 'Блок-схема показывает основные этапы выполнения программы: от ввода данных до вывода результата.',
+      type: 'diagram',
+      order: 4
+    },
+    // Курс: Веб-разработка
+    {
+      courseTitle: 'Веб-разработка',
+      title: 'Введение в веб-разработку',
+      content: '<p>Веб-разработка делится на две основные части:</p><h3>Frontend</h3><p>Это клиентская часть, которая работает в браузере. Технологии: HTML, CSS, JavaScript.</p><h3>Backend</h3><p>Это серверная часть, которая обрабатывает данные. Технологии: Node.js, Python, PHP, базы данных.</p>',
+      type: 'text',
+      order: 1
+    },
+    {
+      courseTitle: 'Веб-разработка',
+      title: 'Основы HTML',
+      content: '<p>HTML (HyperText Markup Language) — это язык разметки веб-страниц.</p><h3>Основные теги:</h3><ul><li><code>&lt;h1&gt;</code> — заголовок первого уровня</li><li><code>&lt;p&gt;</code> — параграф текста</li><li><code>&lt;a href="..."&gt;</code> — ссылка</li><li><code>&lt;img src="..."&gt;</code> — изображение</li></ul>',
+      type: 'text',
+      order: 2
+    },
+    {
+      courseTitle: 'Веб-разработка',
+      title: 'Видео: Создание первой страницы',
+      content: 'На этом видео мы создадим простую HTML-страницу с нуля.',
+      type: 'video',
+      order: 3
+    },
+    {
+      courseTitle: 'Веб-разработка',
+      title: 'Схема: Архитектура веб-приложения',
+      content: 'Интерактивная схема показывает взаимодействие между браузером, сервером и базой данных.',
+      type: 'diagram',
+      order: 4
+    },
+    // Курс: JavaScript для начинающих
+    {
+      courseTitle: 'JavaScript для начинающих',
+      title: 'Введение в JavaScript',
+      content: '<p>JavaScript — это язык программирования, который делает веб-страницы интерактивными.</p><h3>Возможности JavaScript:</h3><ul><li>Динамическое обновление контента</li><li>Анимация и визуальные эффекты</li><li>Валидация форм</li><li>Взаимодействие с API</li></ul>',
+      type: 'text',
+      order: 1
+    },
+    {
+      courseTitle: 'JavaScript для начинающих',
+      title: 'Видео: Переменные и функции',
+      content: 'Основы работы с переменными и функциями в JavaScript.',
+      type: 'video',
+      order: 2
+    },
+    {
+      courseTitle: 'JavaScript для начинающих',
+      title: 'Схема: JavaScript в браузере',
+      content: 'Как JavaScript взаимодействует с DOM и BOM.',
+      type: 'diagram',
+      order: 3
+    }
+  ];
+
+  let addedPages = 0;
+  pages.forEach(page => {
+    const courseId = courseIds[page.courseTitle];
+    if (courseId) {
+      insertPageStmt.bind([courseId, page.title, page.content, page.type, page.order]);
+      insertPageStmt.step();
+      insertPageStmt.reset();
+      addedPages++;
+    }
+  });
+
+  insertPageStmt.free();
+  saveDb();
+
+  console.log(`✅ Добавлено ${addedPages} страниц курсов`);
 };
 
 const saveDb = () => {
@@ -349,4 +506,4 @@ function all(sql, params = []) {
   return Promise.resolve(results);
 }
 
-module.exports = { initDb, run, get, all, createTables, saveDb, seedCourses };
+module.exports = { initDb, run, get, all, createTables, saveDb, seedCourses, seedCoursePages };

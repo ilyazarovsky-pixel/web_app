@@ -80,7 +80,8 @@ router.get('/courses/:id', async (req, res) => {
 
   try {
     const course = await get(
-      `SELECT c.id, c.title, c.description, c.created_at, cat.name as category_name, cat.slug as category_slug
+      `SELECT c.id, c.title, c.description, c.full_description, c.image, c.status, c.created_at,
+              cat.name as category_name, cat.slug as category_slug
        FROM courses c
        LEFT JOIN categories cat ON c.category_id = cat.id
        WHERE c.id = ?`,
@@ -93,6 +94,25 @@ router.get('/courses/:id', async (req, res) => {
         message: 'Курс не найден'
       });
     }
+
+    // Получаем страницы курса
+    const pages = await all(
+      `SELECT id, title, content, page_type, video_url, diagram_data, page_order
+       FROM course_pages
+       WHERE course_id = ?
+       ORDER BY page_order ASC`,
+      [id]
+    );
+
+    // Преобразуем страницы в формат для frontend
+    course.pages = pages.map(page => ({
+      id: page.id,
+      title: page.title,
+      type: page.page_type,
+      content: page.content,
+      videoUrl: page.video_url,
+      diagramData: page.diagram_data ? JSON.parse(page.diagram_data) : null
+    }));
 
     res.json(course);
   } catch (err) {

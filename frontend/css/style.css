@@ -594,7 +594,7 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  max-width: 600px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -648,38 +648,266 @@ main {
 .course-page {
   width: 100%;
   text-align: center;
+  padding: 30px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.course-page h3 {
+  color: #002b5b;
+  margin-bottom: 25px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .page-text-content {
-  margin: 15px 0;
+  margin: 20px 0;
   text-align: left;
-  line-height: 1.6;
+  line-height: 1.8;
+  color: #333;
+  font-size: 1.1rem;
+  max-width: 100%;
+}
+
+.page-text-content h3 {
+  color: #1e88e5;
+  margin-top: 25px;
+  margin-bottom: 12px;
+  font-size: 1.4rem;
+}
+
+.page-text-content h4 {
+  color: #002b5b;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.page-text-content ul, .page-text-content ol {
+  margin: 15px 0;
+  padding-left: 30px;
+}
+
+.page-text-content li {
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+}
+
+.page-text-content code {
+  background: #f5f5f5;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  color: #e91e63;
+  font-size: 1rem;
+}
+
+.page-text-content strong {
+  color: #002b5b;
+  font-weight: 600;
+}
+
+.page-text-content p {
+  margin-bottom: 15px;
 }
 
 .course-pages-container {
   width: 100%;
+  background: white;
+  border-radius: 16px;
+  padding: 40px 50px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 750px;
+  margin: 0 auto;
+  border: 2px solid rgba(0, 43, 91, 0.08);
+}
+
+/* Видео */
+.video-placeholder {
+  width: 100%;
+  min-height: 450px;
+  background: linear-gradient(135deg, #1e88e5, #42a5f5);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin: 25px 0;
+  position: relative;
+  overflow: hidden;
+  padding: 30px;
+}
+
+.video-scheme {
+  width: 95%;
+  min-height: 300px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  backdrop-filter: blur(5px);
+  padding: 20px;
+}
+
+.video-placeholder-content {
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0 20px;
+}
+
+/* Схема/Диаграмма */
+.diagram-placeholder {
+  width: 100%;
+  min-height: 500px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin: 25px 0;
+  padding: 30px;
+  position: relative;
+}
+
+.diagram-scheme {
+  width: 100%;
+  min-height: 350px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 25px;
+  backdrop-filter: blur(5px);
+  padding: 30px;
+}
+
+/* Интерактивная схема */
+.interactive-diagram {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+}
+
+.diagram-node {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  padding: 20px 35px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  min-width: 180px;
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+.diagram-node:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  background: #fff;
+}
+
+.diagram-node.active {
+  background: #4caf50;
+  color: white;
+  transform: scale(1.08);
+  box-shadow: 0 10px 30px rgba(76, 175, 80, 0.4);
+}
+
+.diagram-node i {
+  font-size: 1.3rem;
+  margin-right: 10px;
+}
+
+.diagram-arrow {
+  font-size: 2.5rem;
+  color: rgba(255, 255, 255, 0.9);
+  animation: bounce 1.5s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(12px);
+  }
+}
+
+.diagram-row {
+  display: flex;
+  gap: 50px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.diagram-info {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  padding: 20px 30px;
+  border-radius: 12px;
+  margin-top: 25px;
+  font-size: 1.05rem;
+  max-width: 600px;
+  text-align: center;
+  line-height: 1.6;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.diagram-info strong {
+  color: #667eea;
+  font-size: 1.1rem;
+}
+
+.diagram-info p {
+  margin-top: 10px;
+  margin-bottom: 0;
 }
 
 .course-navigation {
   width: 100%;
   display: flex;
   justify-content: center;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
 }
 
 .next-btn {
-  padding: 14px 32px;
+  padding: 18px 48px;
   background: #1e88e5;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(30, 136, 229, 0.3);
 }
 
 .next-btn:hover {
   background: #1565c0;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4);
+}
+
+.next-btn:active {
+  transform: translateY(0);
 }
 
 /* Подвал */
@@ -923,6 +1151,41 @@ footer {
   .next-btn {
     width: 100%;
   }
+
+  /* Адаптивность для страниц курсов */
+  .course-pages-container {
+    padding: 25px;
+  }
+
+  .course-page h3 {
+    font-size: 1.6rem;
+  }
+
+  .page-text-content {
+    font-size: 1rem;
+  }
+
+  .video-placeholder {
+    min-height: 350px;
+  }
+
+  .diagram-placeholder {
+    min-height: 400px;
+  }
+
+  .diagram-row {
+    gap: 20px;
+  }
+
+  .diagram-node {
+    padding: 15px 25px;
+    font-size: 1rem;
+    min-width: 140px;
+  }
+
+  .diagram-arrow {
+    font-size: 1.8rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -942,6 +1205,70 @@ footer {
   /* Убираем gap на мобильных для компактности */
   .header-left {
     gap: 12px;
+  }
+
+  /* Адаптивность для страниц курсов на мобильных */
+  .course-pages-container {
+    padding: 20px;
+  }
+
+  .course-page {
+    padding: 20px;
+  }
+
+  .course-page h3 {
+    font-size: 1.4rem;
+  }
+
+  .page-text-content {
+    font-size: 0.95rem;
+  }
+
+  .video-placeholder {
+    min-height: 280px;
+    padding: 20px;
+  }
+
+  .video-placeholder-content {
+    font-size: 1.1rem;
+  }
+
+  .diagram-placeholder {
+    min-height: 350px;
+    padding: 20px;
+  }
+
+  .diagram-scheme {
+    padding: 15px;
+  }
+
+  .diagram-row {
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  .diagram-node {
+    padding: 12px 20px;
+    font-size: 0.95rem;
+    min-width: 120px;
+    width: 100%;
+    max-width: 200px;
+  }
+
+  .diagram-arrow {
+    font-size: 1.5rem;
+    transform: rotate(90deg);
+  }
+
+  .diagram-info {
+    padding: 15px;
+    font-size: 0.9rem;
+    max-width: 100%;
+  }
+
+  .next-btn {
+    padding: 15px 30px;
+    font-size: 1.1rem;
   }
 }
 
@@ -1939,7 +2266,6 @@ input[type="date"] {
     flex-direction: column;
     gap: 0.5rem;
   }
-}
 
   .form-row .form-group {
     width: 100%;

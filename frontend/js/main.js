@@ -329,12 +329,16 @@ function loadCoursePage(course, pageIndex) {
         <div class="course-page">
           <h3>${page.title || 'Видеоурок'}</h3>
           <div class="video-placeholder">
-            <p>Видео: ${page.title || 'Видеоурок'}</p>
+            <i class="fas fa-play-circle" style="font-size: 3rem; margin-bottom: 15px;"></i>
+            <div class="video-placeholder-content">${page.title || 'Видеоурок'}</div>
             <div class="video-scheme">
-              <div class="video-placeholder-content">Видеоплеер</div>
+              <div class="video-placeholder-content">
+                <i class="fas fa-film" style="font-size: 2rem; opacity: 0.8;"></i>
+                <p style="margin-top: 10px; font-size: 0.9rem;">Место для видеоплеера</p>
+              </div>
             </div>
           </div>
-          ${page.description ? `<div class="page-text-content">${page.description}</div>` : ''}
+          ${page.content ? `<div class="page-text-content">${page.content}</div>` : ''}
         </div>
       `;
       break;
@@ -343,12 +347,16 @@ function loadCoursePage(course, pageIndex) {
         <div class="course-page">
           <h3>${page.title || 'Схема'}</h3>
           <div class="diagram-placeholder">
-            <p>Схема: ${page.title || 'Веб-схема'}</p>
             <div class="diagram-scheme">
-              <div class="diagram-placeholder-content">Визуальная схема</div>
+              <div class="interactive-diagram" id="interactive-diagram-${pageIndex}">
+                <!-- Интерактивная схема будет сгенерирована здесь -->
+              </div>
+            </div>
+            <div class="diagram-info">
+              <strong>💡 Подсказка:</strong> Наведите курсор на элементы схемы для взаимодействия
             </div>
           </div>
-          ${page.description ? `<div class="page-text-content">${page.description}</div>` : ''}
+          ${page.content ? `<div class="page-text-content">${page.content}</div>` : ''}
         </div>
       `;
       break;
@@ -363,6 +371,11 @@ function loadCoursePage(course, pageIndex) {
 
   container.innerHTML = pageContent;
 
+  // Инициализируем интерактивную схему для страниц типа diagram
+  if (page.type === 'diagram') {
+    initInteractiveDiagram(pageIndex, page.title || '');
+  }
+
   // Обновляем текст кнопки "Далее"
   const nextButton = document.getElementById('next-btn');
   if (pageIndex >= course.pages.length - 1) {
@@ -370,6 +383,134 @@ function loadCoursePage(course, pageIndex) {
   } else {
     nextButton.textContent = 'Далее';
   }
+}
+
+// Инициализация интерактивной схемы
+function initInteractiveDiagram(pageIndex, pageTitle) {
+  const diagramContainer = document.getElementById(`interactive-diagram-${pageIndex}`);
+  if (!diagramContainer) return;
+
+  // Определяем тип схемы по названию
+  const isArchitecture = pageTitle.toLowerCase().includes('архитектура') ||
+                         pageTitle.toLowerCase().includes('веб-приложени') ||
+                         pageTitle.toLowerCase().includes('http');
+
+  const isProgramStructure = pageTitle.toLowerCase().includes('структура') ||
+                             pageTitle.toLowerCase().includes('программ');
+
+  if (isArchitecture || isProgramStructure) {
+    // Схема клиент-сервер или HTTP-запрос
+    diagramContainer.innerHTML = `
+      <div class="diagram-row">
+        <div class="diagram-node" data-node="client">
+          <i class="fas fa-laptop" style="margin-right: 8px;"></i>
+          Клиент
+        </div>
+        <div class="diagram-arrow">
+          <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="diagram-node" data-node="server">
+          <i class="fas fa-server" style="margin-right: 8px;"></i>
+          Сервер
+        </div>
+        <div class="diagram-arrow">
+          <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="diagram-node" data-node="database">
+          <i class="fas fa-database" style="margin-right: 8px;"></i>
+          База данных
+        </div>
+      </div>
+    `;
+
+    // Добавляем обработчики событий
+    const nodes = diagramContainer.querySelectorAll('.diagram-node');
+    nodes.forEach(node => {
+      node.addEventListener('click', function() {
+        nodes.forEach(n => n.classList.remove('active'));
+        this.classList.add('active');
+
+        // Показываем информацию о выбранном узле
+        showDiagramInfo(this.dataset.node, diagramContainer);
+      });
+
+      node.addEventListener('mouseenter', function() {
+        this.style.transform = 'scale(1.1)';
+      });
+
+      node.addEventListener('mouseleave', function() {
+        if (!this.classList.contains('active')) {
+          this.style.transform = 'scale(1)';
+        }
+      });
+    });
+  } else {
+    // Универсальная схема
+    diagramContainer.innerHTML = `
+      <div class="diagram-row">
+        <div class="diagram-node" data-node="input">
+          <i class="fas fa-keyboard" style="margin-right: 8px;"></i>
+          Ввод
+        </div>
+        <div class="diagram-arrow">
+          <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="diagram-node" data-node="process">
+          <i class="fas fa-cog" style="margin-right: 8px;"></i>
+          Обработка
+        </div>
+        <div class="diagram-arrow">
+          <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="diagram-node" data-node="output">
+          <i class="fas fa-desktop" style="margin-right: 8px;"></i>
+          Вывод
+        </div>
+      </div>
+    `;
+
+    const nodes = diagramContainer.querySelectorAll('.diagram-node');
+    nodes.forEach(node => {
+      node.addEventListener('click', function() {
+        nodes.forEach(n => n.classList.remove('active'));
+        this.classList.add('active');
+        showDiagramInfo(this.dataset.node, diagramContainer);
+      });
+
+      node.addEventListener('mouseenter', function() {
+        this.style.transform = 'scale(1.1)';
+      });
+
+      node.addEventListener('mouseleave', function() {
+        if (!this.classList.contains('active')) {
+          this.style.transform = 'scale(1)';
+        }
+      });
+    });
+  }
+}
+
+// Показ информации об узле схемы
+function showDiagramInfo(nodeType, container) {
+  let info = document.getElementById('diagram-info-text');
+
+  if (!info) {
+    info = document.createElement('div');
+    info.id = 'diagram-info-text';
+    info.className = 'diagram-info';
+    container.parentElement.appendChild(info);
+  }
+
+  const infoTexts = {
+    'client': '<strong>Клиент (Browser)</strong><br>Отправляет запросы на сервер и отображает полученные данные. Примеры: Chrome, Firefox, Safari.',
+    'server': '<strong>Сервер (Backend)</strong><br>Обрабатывает запросы клиента, выполняет бизнес-логику и работает с базой данных.',
+    'database': '<strong>База данных</strong><br>Хранит и организует данные. Примеры: SQLite, PostgreSQL, MongoDB.',
+    'input': '<strong>Ввод данных</strong><br>Пользователь вводит данные через клавиатуру, мышь или другие устройства.',
+    'process': '<strong>Обработка</strong><br>Программа обрабатывает входные данные согласно заданному алгоритму.',
+    'output': '<strong>Вывод данных</strong><br>Результат обработки показывается пользователю на экране или сохраняется в файл.'
+  };
+
+  info.innerHTML = infoTexts[nodeType] || 'Нажмите на элемент схемы для получения информации';
 }
 
 // Функция для перехода к следующей странице
