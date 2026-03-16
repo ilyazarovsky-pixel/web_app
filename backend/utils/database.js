@@ -331,11 +331,11 @@ const seedCourses = () => {
   console.log(`✅ Добавлено ${newCourses.length} курсов в БД`);
 
   // Заполняем страницы курсов
-  seedCoursePages(categoryIds);
+  seedCoursePages();
 };
 
 // Заполнение страниц курсов
-const seedCoursePages = (categoryIds) => {
+const seedCoursePages = () => {
   console.log('📄 Проверка страниц курсов...');
 
   // Проверяем количество страниц
