@@ -10,6 +10,7 @@ const rfs = require('rotating-file-stream');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./utils/swagger');
 const http = require('http');
+const { initRedis, closeRedis } = require('./utils/redis');
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
@@ -162,6 +163,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 if (process.env.NODE_ENV !== 'test') {
   const { initWebSocket } = require('./websocket');
   initWebSocket(server);
+
+  // Инициализация Redis
+  initRedis();
 }
 
 // Главная страница (перенаправление на авторизацию)
@@ -209,9 +213,11 @@ function gracefulShutdown(server, signal) {
 
   server.close(() => {
     console.log('HTTP server closed.');
-    // Здесь можно закрыть соединение с БД:
-    // db.close(() => { console.log('Database closed.'); process.exit(0); });
-    process.exit(0);
+    // Закрываем соединение с Redis
+    closeRedis().then(() => {
+      console.log('Database closed.');
+      process.exit(0);
+    });
   });
 
   // Если за 10 секунд не завершились — принудительно
