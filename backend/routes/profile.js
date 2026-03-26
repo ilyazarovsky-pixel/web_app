@@ -6,13 +6,32 @@ const { validateName, validateBirthDate, validateAge } = require('../utils/valid
 const { upload, handleUploadError } = require('../middleware/upload');
 const path = require('path');
 const fs = require('fs');
+const { getRedis, isRedisAvailable } = require('../utils/redis');
+const { invalidateCache } = require('../middleware/cache');
 
 // Middleware для проверки JWT токена
 const authMiddleware = require('../middleware/auth');
 
+// TTL для кэша профиля (10 минут)
+const PROFILE_CACHE_TTL = 600;
+
 // GET /profile — получить данные текущего пользователя
 router.get('/profile', authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+
   try {
+    // Пытаемся получить из кэша Redis
+    if (isRedisAvailable()) {
+      const redis = getRedis();
+      const cachedProfile = await redis.get(`user:${userId}`);
+
+      if (cachedProfile) {
+        res.set('X-Cache', 'HIT');
+        return res.json(JSON.parse(cachedProfile));
+      }
+      res.set('X-Cache', 'MISS');
+    }
+
     // req.user содержит данные из JWT тока
     const user = await User.findById(req.user.id);
 
@@ -21,7 +40,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
     }
 
     // НИКОГДА не возвращай пароль!
-    res.json({
+    const profileData = {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -29,7 +48,15 @@ router.get('/profile', authMiddleware, async (req, res) => {
       avatar: user.avatar,
       bio: user.bio,
       createdAt: user.created_at
-    });
+    };
+
+    // Сохраняем в кэш Redis (только публичные данные, без пароля)
+    if (isRedisAvailable()) {
+      const redis = getRedis();
+      await redis.setex(`user:${userId}`, PROFILE_CACHE_TTL, JSON.stringify(profileData));
+    }
+
+    res.json(profileData);
   } catch (error) {
     console.error('Ошибка при получении профиля:', error.message);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -86,6 +113,13 @@ router.put('/profile', authMiddleware, async (req, res) => {
 
     // Возвращаем обновлённый профиль
     const user = await User.findById(userId);
+
+    // Инвалидируем кэш профиля
+    if (isRedisAvailable()) {
+      const redis = getRedis();
+      await redis.del(`user:${userId}`);
+    }
+
     res.json({
       message: 'Профиль обновлён',
       user
@@ -138,6 +172,12 @@ router.put('/profile/password', authMiddleware, async (req, res) => {
     // Обновляем пароль в базе данных
     const { run } = require('../utils/database');
     await run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.user.id]);
+
+    // Инвалидируем кэш профиля
+    if (isRedisAvailable()) {
+      const redis = getRedis();
+      await redis.del(`user:${req.user.id}`);
+    }
 
     res.json({ message: 'Пароль успешно изменён' });
   } catch (error) {
@@ -208,6 +248,12 @@ router.post('/profile/avatar', authMiddleware, upload.single('avatar'), handleUp
     const { run } = require('../utils/database');
     await run('UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [avatarUrl, userId]);
 
+    // Инвалидируем кэш профиля
+    if (isRedisAvailable()) {
+      const redis = getRedis();
+      await redis.del(`user:${userId}`);
+    }
+
     res.json({
       message: 'Аватар загружен',
       avatar: avatarUrl
@@ -234,6 +280,12 @@ router.delete('/profile/avatar', authMiddleware, async (req, res) => {
 
     const { run } = require('../utils/database');
     await run('UPDATE users SET avatar = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [userId]);
+
+    // Инвалидируем кэш профиля
+    if (isRedisAvailable()) {
+      const redis = getRedis();
+      await redis.del(`user:${userId}`);
+    }
 
     res.json({ message: 'Аватар удалён' });
   } catch (err) {
