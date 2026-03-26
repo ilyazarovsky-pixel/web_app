@@ -1,0 +1,114 @@
+# Production Docker Compose для LearnHub
+# Отличия от dev:
+# - NODE_ENV=production
+# - Нет volume mounts для кода
+# - Рестарт политики: unless-stopped
+# - Лимиты ресурсов
+# - Логирование в JSON формате
+
+services:
+  # Nginx - Reverse Proxy + статические файлы
+  nginx:
+    image: nginx:alpine
+    container_name: learnhub-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/app/frontend:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - learnhub-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Backend приложение
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: learnhub-backend
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET required}
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
+    volumes:
+      - backend_data:/app/backend/data
+      - backend_uploads:/app/backend/uploads
+      - backend_logs:/app/backend/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - learnhub-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Redis - кэширование и rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: learnhub-redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - learnhub-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  learnhub-network:
+    driver: bridge
+
+volumes:
+  backend_data:
+  backend_uploads:
+  backend_logs:
+  redis_data:
