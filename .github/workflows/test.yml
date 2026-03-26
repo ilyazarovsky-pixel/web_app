@@ -24,17 +24,70 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
-    # Шаг 3: Устанавливаем зависимости бэкенда
-    - name: Устанавливаем зависимости бэкенда
-      run: cd backend && npm ci
+    # Шаг 3: Устанавливаем зависимости
+    - name: Устанавливаем зависимости
+      run: npm ci
 
-    # Шаг 4: Запускаем линтер из папки backend
+    # Шаг 4: Запускаем линтер
     - name: Запускаем линтер
-      run: cd backend && npm run lint || true
+      run: npm run lint || true
+      env:
+        JWT_SECRET: your-secret-key-here
 
-    # Шаг 5: Запускаем тесты из папки backend
-    - name: Запускаем тесты
-      run: cd backend && npm test
+    # Шаг 5: Запускаем unit тесты
+    - name: Запускаем unit тесты
+      run: npm test
       env:
         NODE_ENV: test
         JWT_SECRET: your-secret-key-here
+
+  e2e:
+    # E2E тесты на Ubuntu
+    runs-on: ubuntu-latest
+
+    # Запускаем после unit тестов
+    needs: test
+
+    steps:
+    # Шаг 1: Клонируем репозиторий
+    - name: Клонируем репозиторий
+      uses: actions/checkout@v4
+
+    # Шаг 2: Устанавливаем Node.js
+    - name: Устанавливаем Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    # Шаг 3: Устанавливаем зависимости
+    - name: Устанавливаем зависимости
+      run: npm ci
+
+    # Шаг 4: Устанавливаем Playwright браузеры
+    - name: Устанавливаем Playwright браузеры
+      run: npx playwright install --with-deps
+
+    # Шаг 5: Запускаем E2E тесты
+    - name: Запускаем E2E тесты
+      run: npm run test:e2e
+      env:
+        JWT_SECRET: your-secret-key-here
+        NODE_ENV: test
+
+    # Шаг 6: Сохраняем артефакты (отчет и видео)
+    - name: Сохраняем артефакты
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 7
+
+    - name: Сохраняем видео тестов
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: test-videos
+        path: test-results/
+        retention-days: 7
