@@ -3,6 +3,7 @@ const router = express.Router();
 const { run, get, all } = require('../utils/database');
 const authMiddleware = require('../middleware/auth');
 const { requireRole } = require('../middleware/role');
+const { invalidateCache } = require('../middleware/cache');
 
 // Middleware для защиты админ-маршрутов
 const requireAdmin = [authMiddleware, requireRole('admin')];
@@ -52,6 +53,9 @@ router.post('/admin/courses', requireAdmin, async (req, res) => {
       message: 'Курс создан',
       course
     });
+
+    // Инвалидируем кэш курсов
+    invalidateCache('courses:*');
   } catch (err) {
     console.error('Ошибка создания курса:', err.message);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -96,6 +100,9 @@ router.put('/admin/courses/:id', requireAdmin, async (req, res) => {
       message: 'Курс обновлён',
       course
     });
+
+    // Инвалидируем кэш курсов
+    invalidateCache('courses:*');
   } catch (err) {
     console.error('Ошибка обновления курса:', err.message);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -127,6 +134,9 @@ router.delete('/admin/courses/:id', requireAdmin, async (req, res) => {
     await run('DELETE FROM courses WHERE id = ?', [id]);
 
     res.json({ message: 'Курс удалён' });
+
+    // Инвалидируем кэш курсов
+    invalidateCache('courses:*');
   } catch (err) {
     console.error('Ошибка удаления курса:', err.message);
     res.status(500).json({ error: 'Ошибка сервера' });

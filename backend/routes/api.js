@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { all, get } = require('../utils/database');
+const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
 
 // Получить курсы с поддержкой фильтрации по категории и поиска
-router.get('/courses', async (req, res) => {
+router.get('/courses', cacheMiddleware('courses:list', 300), async (req, res) => {
   const { category, q, page = 1, limit = 10 } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
