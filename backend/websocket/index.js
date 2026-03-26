@@ -1,11 +1,48 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const { run } = require('../utils/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-unsafe-key';
 
 let io = null;
 // Map для хранения соответствия userId -> socketId
 const userSockets = new Map();
+
+/**
+ * Сохранить уведомление в базу данных
+ * @param {number} userId - ID пользователя
+ * @param {string} type - Тип уведомления
+ * @param {Object} data - Данные уведомления
+ */
+async function saveNotificationToDb(userId, type, data) {
+  try {
+    await run(
+      'INSERT INTO notifications (user_id, type, data) VALUES (?, ?, ?)',
+      [userId, type, JSON.stringify(data)]
+    );
+  } catch (err) {
+    console.error('Ошибка сохранения уведомления в БД:', err.message);
+  }
+}
+
+/**
+ * Отправить уведомление пользователю
+ * @param {number} userId - ID пользователя
+ * @param {Object} data - Данные уведомления
+ */
+async function sendNotificationToUser(userId, data) {
+  const socketId = userSockets.get(userId);
+
+  // Сохраняем уведомление в БД
+  await saveNotificationToDb(userId, data.type, data);
+
+  // Отправляем WebSocket уведомление если пользователь онлайн
+  if (socketId && io) {
+    io.to(socketId).emit('notification', data);
+    return true;
+  }
+  return false;
+}
 
 /**
  * Инициализация WebSocket сервера
@@ -67,20 +104,6 @@ function initWebSocket(server) {
 
   console.log('✅ WebSocket сервер запущен');
   return io;
-}
-
-/**
- * Отправить уведомление пользователю
- * @param {number} userId - ID пользователя
- * @param {Object} data - Данные уведомления
- */
-function sendNotificationToUser(userId, data) {
-  const socketId = userSockets.get(userId);
-  if (socketId) {
-    io.to(socketId).emit('notification', data);
-    return true;
-  }
-  return false;
 }
 
 /**

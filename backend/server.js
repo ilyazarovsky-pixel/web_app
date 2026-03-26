@@ -149,6 +149,7 @@ app.use(require('./routes/enrollments'));
 app.use(require('./routes/progress'));
 app.use(require('./routes/favorites'));
 app.use(require('./routes/reviews'));
+app.use(require('./routes/notifications'));
 
 // Swagger документация
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
