@@ -8,6 +8,9 @@
     "frontend": "cd frontend && npx live-server",
     "start": "node backend/server.js",
     "test": "jest --detectOpenHandles",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "lint": "cd backend && npx eslint .",
     "lint:fix": "cd backend && npx eslint . --fix"
   },
@@ -20,6 +23,7 @@
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "concurrently": "^8.2.2",
     "cypress": "^15.8.1",
     "eslint": "^9.39.2",
