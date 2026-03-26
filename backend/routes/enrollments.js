@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { run, all } = require('../utils/database');
+const { run, get, all } = require('../utils/database');
 const authMiddleware = require('../middleware/auth');
+const { sendNotificationToUser } = require('../websocket');
 
 /**
  * @swagger
@@ -39,10 +40,30 @@ router.post('/enrollments', authMiddleware, async (req, res) => {
   }
 
   try {
+    // Получаем информацию о курсе для уведомления автора
+    const course = await get('SELECT title, author_id FROM courses WHERE id = ?', [courseId]);
+
+    // Получаем имя студента для уведомления
+    const student = await get('SELECT name FROM users WHERE id = ?', [userId]);
+
     await run(
       'INSERT INTO enrollments (user_id, course_id) VALUES (?, ?)',
       [userId, courseId]
     );
+
+    // Отправляем уведомление автору курса если он существует и это не сам студент
+    if (course && course.author_id && course.author_id !== userId) {
+      const notificationData = {
+        type: 'new_enrollment',
+        courseId,
+        courseTitle: course.title,
+        studentName: student?.name || 'Пользователь',
+        timestamp: new Date().toISOString()
+      };
+
+      // Отправляем WebSocket уведомление
+      sendNotificationToUser(course.author_id, notificationData);
+    }
 
     res.json({ message: 'Вы записались на курс' });
   } catch (err) {
