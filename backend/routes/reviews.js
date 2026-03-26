@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { run, get, all } = require('../utils/database');
 const authMiddleware = require('../middleware/auth');
+const { sendNotificationToUser } = require('../websocket');
 
 /**
  * @swagger
@@ -56,6 +57,12 @@ router.post('/courses/:id/reviews', authMiddleware, async (req, res) => {
   }
 
   try {
+    // Получаем информацию о курсе для уведомления автора
+    const course = await get('SELECT title, author_id FROM courses WHERE id = ?', [courseId]);
+
+    // Получаем имя пользователя для уведомления
+    const reviewer = await get('SELECT name FROM users WHERE id = ?', [userId]);
+
     await run(
       `INSERT INTO reviews (user_id, course_id, rating, comment) VALUES (?, ?, ?, ?)
        ON CONFLICT(user_id, course_id) DO UPDATE SET
@@ -64,6 +71,22 @@ router.post('/courses/:id/reviews', authMiddleware, async (req, res) => {
        updated_at = CURRENT_TIMESTAMP`,
       [userId, courseId, rating, comment || null]
     );
+
+    // Отправляем уведомление автору курса если он существует и это не сам автор отзыва
+    if (course && course.author_id && course.author_id !== userId) {
+      const notificationData = {
+        type: 'new_review',
+        courseId,
+        courseTitle: course.title,
+        reviewerName: reviewer?.name || 'Пользователь',
+        rating,
+        comment: comment || '',
+        timestamp: new Date().toISOString()
+      };
+
+      // Отправляем WebSocket уведомление
+      sendNotificationToUser(course.author_id, notificationData);
+    }
 
     res.json({ message: 'Отзыв добавлен' });
   } catch (err) {

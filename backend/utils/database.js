@@ -96,6 +96,8 @@ const createTables = () => {
     try { db.run('ALTER TABLE courses ADD COLUMN full_description TEXT'); } catch {}
     try { db.run('ALTER TABLE courses ADD COLUMN image TEXT'); } catch {}
     try { db.run('ALTER TABLE courses ADD COLUMN status TEXT DEFAULT \'active\''); } catch {}
+    // Добавляем author_id для уведомлений
+    try { db.run('ALTER TABLE courses ADD COLUMN author_id INTEGER'); } catch {}
   }
 
   // Таблица записей на курсы
