@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const { RedisStore } = require('rate-limit-redis');
 const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
@@ -10,29 +11,44 @@ const rfs = require('rotating-file-stream');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./utils/swagger');
 const http = require('http');
-const { initRedis, closeRedis } = require('./utils/redis');
+const { initRedis, closeRedis, getRedis, isRedisAvailable } = require('./utils/redis');
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
+/**
+ * Создать store для rate limiting
+ * Если Redis недоступен — используется memory store
+ */
+function createRateLimitStore() {
+  if (isRedisAvailable()) {
+    return new RedisStore({
+      sendCommand: (...args) => getRedis().call(...args),
+    });
+  }
+  return null; // Fallback на memory store
+}
+
 // Общий лимит: 100 запросов за 15 минут с одного IP
 // В тестовой среде отключаем ограничение
 const generalLimiter = rateLimit({
-  windowMs: process.env.NODE_ENV === 'test' ? 1 : 15 * 60 * 1000,  // 1ms in test mode = no effective limit
+  windowMs: process.env.NODE_ENV === 'test' ? 1 : 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'test' ? Number.MAX_SAFE_INTEGER : 100,
   message: { error: 'Слишком много запросов. Попробуйте позже.' },
   standardHeaders: true,
   legacyHeaders: false,
+  store: process.env.NODE_ENV !== 'test' ? createRateLimitStore() : undefined,
 });
 
 // Строгий лимит для авторизации: 5 попыток за 15 минут
 // В тестовой среде отключаем ограничение
 const authLimiter = rateLimit({
-  windowMs: process.env.NODE_ENV === 'test' ? 1 : 15 * 60 * 1000,  // 1ms in test mode = no effective limit
+  windowMs: process.env.NODE_ENV === 'test' ? 1 : 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'test' ? Number.MAX_SAFE_INTEGER : 5,
   message: { error: 'Слишком много попыток входа. Подождите 15 минут.' },
   standardHeaders: true,
   legacyHeaders: false,
+  store: process.env.NODE_ENV !== 'test' ? createRateLimitStore() : undefined,
 });
 
 // Устанавливает безопасные HTTP-заголовки:
