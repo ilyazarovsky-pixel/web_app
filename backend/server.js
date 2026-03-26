@@ -9,7 +9,9 @@ const fs = require('fs');
 const rfs = require('rotating-file-stream');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./utils/swagger');
+const http = require('http');
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Общий лимит: 100 запросов за 15 минут с одного IP
@@ -155,6 +157,12 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   customSiteTitle: 'LearnHub API Docs'
 }));
 
+// Инициализация WebSocket сервера
+if (process.env.NODE_ENV !== 'test') {
+  const { initWebSocket } = require('./websocket');
+  initWebSocket(server);
+}
+
 // Главная страница (перенаправление на авторизацию)
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
@@ -217,7 +225,7 @@ module.exports = app;
 
 // Запускаем сервер только если файл запускается напрямую
 if (require.main === module) {
-  const server = app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`✅ Бэкенд запущен на http://localhost:${PORT}`);
   });
 
