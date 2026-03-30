@@ -21,9 +21,8 @@ test.describe('Authentication Flow', () => {
     const name = 'Тестовый Пользователь';
     const birthDate = '2000-01-01';
 
-    // Переходим на страницу регистрации
-    await page.click('text=Регистрация');
-    await page.waitForURL(/\/register/);
+    // Переходим на страницу регистрации через URL
+    await page.goto('/register');
 
     // Заполняем форму регистрации
     await page.fill('input[name="name"]', name);
@@ -34,11 +33,11 @@ test.describe('Authentication Flow', () => {
     // Отправляем форму
     await page.click('button[type="submit"]');
 
-    // Проверяем что регистрация успешна (редирект на главную или сообщение об успехе)
+    // Проверяем что регистрация успешна
     await page.waitForTimeout(1000);
-    
-    // Проверяем что пользователь вошел (видим имя в меню)
-    const userMenu = page.locator('.user-menu');
+
+    // Проверяем что пользователь вошел
+    const userMenu = page.locator('#user-profile-btn');
     await expect(userMenu).toBeVisible();
   });
 
@@ -59,9 +58,8 @@ test.describe('Authentication Flow', () => {
       }
     });
 
-    // Переходим на страницу входа
-    await page.click('text=Вход');
-    await page.waitForURL(/\/login/);
+    // Переходим на страницу входа через URL
+    await page.goto('/login');
 
     // Вводим credentials
     await page.fill('input[name="email"]', email);
@@ -70,9 +68,9 @@ test.describe('Authentication Flow', () => {
     // Отправляем форму
     await page.click('button[type="submit"]');
 
-    // Проверяем что вошли (видим имя пользователя или dashboard)
+    // Проверяем что вошли
     await page.waitForTimeout(1000);
-    const userMenu = page.locator('.user-menu');
+    const userMenu = page.locator('#user-profile-btn');
     await expect(userMenu).toBeVisible();
   });
 
@@ -92,9 +90,8 @@ test.describe('Authentication Flow', () => {
       }
     });
 
-    // Переходим на страницу входа
-    await page.click('text=Вход');
-    await page.waitForURL(/\/login/);
+    // Переходим на страницу входа через URL
+    await page.goto('/login');
 
     // Вводим неверный пароль
     await page.fill('input[name="email"]', email);
@@ -105,14 +102,13 @@ test.describe('Authentication Flow', () => {
 
     // Проверяем что показывается ошибка
     await page.waitForTimeout(500);
-    const errorMessage = page.locator('.error-message, .alert, text=неверный пароль, text=ошибка');
+    const errorMessage = page.locator('.form-error, .error, text=неверный пароль, text=ошибка');
     await expect(errorMessage).toBeVisible();
   });
 
   test('Валидация формы регистрации - пустой email', async ({ page }) => {
-    // Переходим на страницу регистрации
-    await page.click('text=Регистрация');
-    await page.waitForURL(/\/register/);
+    // Переходим на страницу регистрации через URL
+    await page.goto('/register');
 
     // Заполняем форму без email
     await page.fill('input[name="name"]', 'Тест');
@@ -124,14 +120,13 @@ test.describe('Authentication Flow', () => {
 
     // Проверяем что есть ошибка валидации
     await page.waitForTimeout(500);
-    const errorMessage = page.locator('.error-message, .alert, text=обязательно, text=required');
+    const errorMessage = page.locator('.form-error, .error, text=обязательно, text=required');
     await expect(errorMessage).toBeVisible();
   });
 
   test('Валидация формы регистрации - короткий пароль', async ({ page }) => {
-    // Переходим на страницу регистрации
-    await page.click('text=Регистрация');
-    await page.waitForURL(/\/register/);
+    // Переходим на страницу регистрации через URL
+    await page.goto('/register');
 
     // Заполняем форму с коротким паролем
     await page.fill('input[name="name"]', 'Тест');

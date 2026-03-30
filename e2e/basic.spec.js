@@ -9,7 +9,7 @@ test('homepage should load successfully', async ({ page }) => {
   await page.goto('/');
 
   // Проверяем что страница загрузилась
-  await expect(page).toHaveTitle(/LearnHub/);
+  await expect(page).toHaveTitle(/Образовательная платформа/);
 
   // Проверяем что есть основные элементы
   await expect(page.locator('h1')).toBeVisible();

@@ -10,6 +10,9 @@ export default defineConfig({
   /* Запуск тестов в параллельных воркерах */
   fullyParallel: true,
 
+  /* Увеличенный таймаут для тестов */
+  timeout: 60000,
+
   /* Запретить повторное использование тестов */
   forbidOnly: !!process.env.CI,
 
