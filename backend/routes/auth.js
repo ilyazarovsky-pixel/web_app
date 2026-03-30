@@ -65,6 +65,7 @@ router.post('/register', async (req, res) => {
       user: { id: newUser.id, name: newUser.name }
     });
   } catch (err) {
+    console.error('Ошибка регистрации:', err.message, err.stack);
     if (err.message.includes('уже существует')) {
       return res.status(400).json({
         success: false,

@@ -7,7 +7,6 @@ const { upload, handleUploadError } = require('../middleware/upload');
 const path = require('path');
 const fs = require('fs');
 const { getRedis, isRedisAvailable } = require('../utils/redis');
-const { invalidateCache } = require('../middleware/cache');
 
 // Middleware для проверки JWT токена
 const authMiddleware = require('../middleware/auth');

@@ -12,6 +12,11 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./utils/swagger');
 const http = require('http');
 const { initRedis, closeRedis, getRedis, isRedisAvailable } = require('./utils/redis');
+const { initDb } = require('./utils/database');
+
+// Инициализируем БД при запуске сервера
+initDb();
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
@@ -155,15 +160,14 @@ app.get('/favicon.ico', (req, res) => {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api', require('./routes/courses')); // Поиск курсов должен быть перед /courses/:id
-app.use('/api', require('./routes/api'));
+app.use('/api', require('./routes/api')); // Основной API курсов (/api/courses, /api/courses/:id)
+app.use('/api', require('./routes/courses')); // Поиск курсов /api/courses/search
 app.use('/api', require('./routes/categories'));
 app.use('/api', require('./routes/admin'));
 app.use(require('./routes/profile'));
-app.use(require('./routes/courses'));
 app.use(require('./routes/stats'));
 app.use(require('./routes/enrollments'));
-app.use(require('./routes/progress'));
+app.use('/api', require('./routes/progress')); // Прогресс /api/progress
 app.use(require('./routes/favorites'));
 app.use(require('./routes/reviews'));
 app.use(require('./routes/notifications'));

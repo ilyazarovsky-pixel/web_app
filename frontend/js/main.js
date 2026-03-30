@@ -2,6 +2,475 @@
 let currentUser = null;
 let authToken = null;
 
+// ========== СИСТЕМА ПРОГРЕССА И АКТИВНОСТИ ==========
+
+// Получить прогресс пользователя из localStorage (резервное хранилище)
+function getUserProgress() {
+  if (!currentUser || !currentUser.id) return {};
+  const progress = localStorage.getItem(`userProgress_${currentUser.id}`);
+  return progress ? JSON.parse(progress) : {};
+}
+
+// Сохранить прогресс пользователя в localStorage (резервное хранилище)
+function saveUserProgress(progress) {
+  if (!currentUser || !currentUser.id) return;
+  localStorage.setItem(`userProgress_${currentUser.id}`, JSON.stringify(progress));
+}
+
+// Получить прогресс всех курсов с сервера (один запрос вместо множества)
+async function fetchAllProgress() {
+  if (!currentUser || !authToken) {
+    return {};
+  }
+
+  try {
+    const res = await fetch('/api/progress', {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      // Преобразуем формат данных
+      const progress = {};
+      for (const [courseId, courseData] of Object.entries(data)) {
+        progress[courseId] = {
+          completedPages: courseData.completedLessons || [],
+          currentPage: courseData.currentPage || 0,
+          completed: courseData.totalCompleted > 0,
+          startedAt: null,
+          completedAt: null,
+          lastAccessedAt: null,
+          timeSpent: 0,
+          quizScores: []
+        };
+      }
+      return progress;
+    }
+  } catch (err) {
+    console.error('Ошибка загрузки прогресса:', err);
+  }
+
+  return {};
+}
+
+// Получить прогресс курса с сервера
+async function fetchCourseProgress(courseId) {
+  if (!currentUser || !authToken) {
+    return getCourseProgress(courseId);
+  }
+
+  try {
+    const res = await fetch(`/api/progress/${courseId}`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        completedPages: data.completedLessons || [],
+        currentPage: data.currentPage || 0,
+        completed: data.completed || false,
+        startedAt: data.startedAt || null,
+        completedAt: data.completedAt || null,
+        lastAccessedAt: data.lastAccessedAt || null,
+        timeSpent: 0,
+        quizScores: []
+      };
+    }
+  } catch (err) {
+    console.error(`Ошибка загрузки прогресса курса ${courseId}:`, err);
+  }
+
+  // Fallback на localStorage
+  return getCourseProgress(courseId);
+}
+
+// Сохранить прогресс курса на сервер (с debouncing)
+let progressSyncTimeout = null;
+let pendingSync = new Map();
+
+async function syncCourseProgress(courseId, courseProgress) {
+  if (!currentUser || !authToken) {
+    saveCourseProgress(courseId, courseProgress);
+    return;
+  }
+
+  // Добавляем в очередь на синхронизацию
+  pendingSync.set(courseId, courseProgress);
+
+  // Очищаем предыдущий таймер
+  if (progressSyncTimeout) {
+    clearTimeout(progressSyncTimeout);
+  }
+
+  // Сохраняем в localStorage как резерв
+  saveCourseProgress(courseId, courseProgress);
+
+  // Ждём 1 секунду перед отправкой (debouncing)
+  progressSyncTimeout = setTimeout(async () => {
+    try {
+      // Отправляем все накопленные изменения одним пакетом
+      const syncPromises = [];
+
+      for (const [cid, progress] of pendingSync) {
+        for (const pageIndex of progress.completedPages) {
+          syncPromises.push(
+            fetch('/api/progress', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+              },
+              body: JSON.stringify({
+                courseId: parseInt(cid),
+                pageIndex: parseInt(pageIndex)
+              })
+            }).catch(err => console.error(`Ошибка синхронизации курса ${cid}:`, err))
+          );
+        }
+      }
+
+      await Promise.all(syncPromises);
+      pendingSync.clear();
+      console.log('[syncCourseProgress] Прогресс синхронизирован');
+    } catch (err) {
+      console.error('Ошибка синхронизации прогресса:', err);
+    }
+  }, 1000);
+}
+
+// Получить или создать прогресс для конкретного курса (из localStorage)
+function getCourseProgress(courseId) {
+  const progress = getUserProgress();
+  if (!progress[courseId]) {
+    progress[courseId] = {
+      completedPages: [],
+      currentPage: 0,
+      completed: false,
+      startedAt: null,
+      completedAt: null,
+      lastAccessedAt: null,
+      timeSpent: 0, // в секундах
+      quizScores: [] // результаты квизов
+    };
+  }
+  return progress[courseId];
+}
+
+// Сохранить прогресс курса (в localStorage)
+function saveCourseProgress(courseId, courseProgress) {
+  const progress = getUserProgress();
+  progress[courseId] = courseProgress;
+  saveUserProgress(progress);
+}
+
+// Обновить прогресс страницы
+async function updatePageProgress(courseId, pageIndex) {
+  console.log(`[updatePageProgress] Вызов для курса ${courseId}, страница ${pageIndex}`);
+  console.log(`[updatePageProgress] currentUser:`, currentUser);
+
+  const progress = getUserProgress();
+  console.log(`[updatePageProgress] Текущий прогресс:`, progress[courseId]);
+
+  if (!progress[courseId]) {
+    progress[courseId] = {
+      completedPages: [],
+      currentPage: 0,
+      completed: false,
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+      lastAccessedAt: null,
+      timeSpent: 0,
+      quizScores: []
+    };
+  }
+
+  const courseProgress = progress[courseId];
+  const prevCount = courseProgress.completedPages.length;
+
+  // Добавляем страницу в завершённые если ещё нет
+  if (!courseProgress.completedPages.includes(pageIndex)) {
+    courseProgress.completedPages.push(pageIndex);
+  }
+
+  console.log(`[updatePageProgress] Добавлена страница ${pageIndex}. Было: ${prevCount}, стало: ${courseProgress.completedPages.length}`);
+
+  courseProgress.currentPage = pageIndex;
+  courseProgress.lastAccessedAt = new Date().toISOString();
+
+  // Проверяем завершён ли курс (используем currentCourse если доступен)
+  const course = currentCourse && currentCourse.id === courseId
+    ? currentCourse
+    : (JSON.parse(localStorage.getItem('userCourses') || '[]').find(c => c.id === courseId));
+
+  if (course && course.pages && courseProgress.completedPages.length >= course.pages.length) {
+    courseProgress.completed = true;
+    courseProgress.completedAt = new Date().toISOString();
+  }
+
+  progress[courseId] = courseProgress;
+  saveUserProgress(progress);
+
+  console.log(`[updatePageProgress] Сохранён прогресс:`, progress[courseId]);
+
+  // Синхронизируем с сервером (не блокируя UI)
+  syncCourseProgress(courseId, courseProgress).catch(err => {
+    console.error('Ошибка синхронизации прогресса:', err);
+  });
+
+  // Записываем активность
+  logActivity('page_completed', { courseId, pageIndex, courseTitle: course?.title });
+
+  return courseProgress;
+}
+
+// Вычислить процент прогресса
+function calculateProgressPercent(courseId, course) {
+  if (!course || !course.pages || course.pages.length === 0) return 0;
+  const progress = getCourseProgress(courseId);
+  const percent = Math.round((progress.completedPages.length / course.pages.length) * 100);
+  console.log(`[Progress] Курс ${courseId}: ${progress.completedPages.length}/${course.pages.length} страниц = ${percent}%`);
+  return percent;
+}
+
+// ========== ИСТОРИЯ АКТИВНОСТИ ==========
+
+// Получить историю активности
+function getActivityHistory() {
+  if (!currentUser) return [];
+  const history = localStorage.getItem(`activityHistory_${currentUser.id}`);
+  return history ? JSON.parse(history) : [];
+}
+
+// Сохранить историю активности
+function saveActivityHistory(history) {
+  if (!currentUser) return;
+  localStorage.setItem(`activityHistory_${currentUser.id}`, JSON.stringify(history));
+}
+
+// Записать событие активности
+function logActivity(actionType, data = {}) {
+  if (!currentUser) return;
+
+  const history = getActivityHistory();
+  const activity = {
+    id: Date.now(),
+    actionType,
+    timestamp: new Date().toISOString(),
+    data
+  };
+
+  // Добавляем в начало (новые события первыми)
+  history.unshift(activity);
+
+  // Храним последние 100 событий
+  if (history.length > 100) {
+    history.splice(100);
+  }
+
+  saveActivityHistory(history);
+}
+
+// Получить отформатированное время
+function formatActivityTime(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diff = now - date;
+
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'Только что';
+  if (minutes < 60) return `${minutes} мин. назад`;
+  if (hours < 24) return `${hours} ч. назад`;
+  if (days < 7) return `${days} дн. назад`;
+
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+}
+
+// Получить иконку для типа активности
+function getActivityIcon(actionType) {
+  const icons = {
+    'course_started': 'fa-play-circle',
+    'course_completed': 'fa-trophy',
+    'page_completed': 'fa-check-circle',
+    'quiz_completed': 'fa-clipboard-check',
+    'login': 'fa-sign-in-alt',
+    'profile_updated': 'fa-user-edit'
+  };
+  return icons[actionType] || 'fa-circle';
+}
+
+// Получить цвет для типа активности
+function getActivityColor(actionType) {
+  const colors = {
+    'course_started': '#4CAF50',
+    'course_completed': '#FFD700',
+    'page_completed': '#2196F3',
+    'quiz_completed': '#9C27B0',
+    'login': '#607D8B',
+    'profile_updated': '#FF9800'
+  };
+  return colors[actionType] || '#757575';
+}
+
+// ========== СИСТЕМА КВИЗОВ ==========
+
+// База вопросов для квизов (можно расширять)
+const quizQuestionsBank = {
+  default: [
+    {
+      id: 1,
+      question: 'Что такое HTML?',
+      options: [
+        'Язык программирования',
+        'Язык разметки гипертекста',
+        'База данных',
+        'Операционная система'
+      ],
+      correct: 1
+    },
+    {
+      id: 2,
+      question: 'Какой тег используется для создания ссылки?',
+      options: [
+        '<link>',
+        '<href>',
+        '<a>',
+        '<url>'
+      ],
+      correct: 2
+    },
+    {
+      id: 3,
+      question: 'Что означает CSS?',
+      options: [
+        'Computer Style Sheets',
+        'Creative Style Sheets',
+        'Cascading Style Sheets',
+        'Colorful Style Sheets'
+      ],
+      correct: 2
+    },
+    {
+      id: 4,
+      question: 'Какой язык используется для программирования в браузере?',
+      options: [
+        'Python',
+        'Java',
+        'JavaScript',
+        'C++'
+      ],
+      correct: 2
+    },
+    {
+      id: 5,
+      question: 'Что такое DOM?',
+      options: [
+        'Document Object Model',
+        'Data Object Mode',
+        'Digital Ordinance Model',
+        'Desktop Orientation Module'
+      ],
+      correct: 0
+    }
+  ],
+  programming: [
+    {
+      id: 1,
+      question: 'Что такое переменная?',
+      options: [
+        'Константное значение',
+        'Именованная область памяти для хранения данных',
+        'Функция без параметров',
+        'Тип данных'
+      ],
+      correct: 1
+    },
+    {
+      id: 2,
+      question: 'Какой оператор используется для присваивания?',
+      options: [
+        '==',
+        '=',
+        '===',
+        ':='
+      ],
+      correct: 1
+    },
+    {
+      id: 3,
+      question: 'Что такое функция?',
+      options: [
+        'Тип данных',
+        'Блок кода для выполнения задачи',
+        'Переменная',
+        'Оператор условия'
+      ],
+      correct: 1
+    }
+  ]
+};
+
+// Получить квиз для курса
+function getQuizForCourse(course) {
+  // Определяем тип курса по названию
+  const title = (course.title || '').toLowerCase();
+  let questions = quizQuestionsBank.default;
+
+  if (title.includes('программ') || title.includes('javascript') || title.includes('python')) {
+    questions = [...quizQuestionsBank.programming, ...quizQuestionsBank.default.slice(0, 2)];
+  }
+
+  // Перемешиваем вопросы и берём 5 случайных
+  const shuffled = [...questions].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 5);
+}
+
+// Сохранить результат квиза
+function saveQuizResult(courseId, score, total) {
+  const progress = getUserProgress();
+  if (!progress[courseId]) {
+    progress[courseId] = {
+      completedPages: [],
+      currentPage: 0,
+      completed: false,
+      startedAt: null,
+      completedAt: null,
+      lastAccessedAt: null,
+      timeSpent: 0,
+      quizScores: []
+    };
+  }
+
+  progress[courseId].quizScores.push({
+    score,
+    total,
+    percentage: Math.round((score / total) * 100),
+    timestamp: new Date().toISOString()
+  });
+
+  saveUserProgress(progress);
+
+  // Записываем активность
+  logActivity('quiz_completed', { courseId, score, total });
+}
+
+// Получить лучший результат квиза
+function getBestQuizScore(courseId) {
+  const progress = getCourseProgress(courseId);
+  if (!progress.quizScores || progress.quizScores.length === 0) return null;
+
+  return progress.quizScores.reduce((best, current) =>
+    current.percentage > best.percentage ? current : best
+  );
+}
+
 // ========== ФУНКЦИИ МЕНЮ ПОЛЬЗОВАТЕЛЯ ==========
 function toggleUserMenu() {
   const menu = document.getElementById('user-menu-content');
@@ -116,6 +585,9 @@ window.navigateTo = function(pageId) {
     showUserMenuIfLoggedIn();
   } else if (pageId === 'profile' && currentUser) {
     loadProfile();
+  } else if (pageId === 'course') {
+    // Обновляем прогресс-бар при переходе на страницу курса
+    setTimeout(() => updateCourseProgressBars(), 100);
   }
 
   // Скрыть мобильное меню при переходе
@@ -170,6 +642,11 @@ window.createCourseCard = function(course, isUserCourse = false) {
   const pageCount = course.pages ? course.pages.length : 0;
   const imageSrc = course.image || 'assets/images/course-default.svg';
 
+  // Получаем прогресс для курса
+  const progressPercent = currentUser ? calculateProgressPercent(course.id, course) : 0;
+  const courseProgress = currentUser ? getCourseProgress(course.id) : null;
+  const completedPages = courseProgress ? courseProgress.completedPages.length : 0;
+
   courseElement.innerHTML = `
     <div class="course-badge ${badgeClass}">${badgeText}</div>
     <img src="${imageSrc}" alt="${course.title}" onerror="this.onerror=null; this.src='assets/images/course-default.svg'">
@@ -190,11 +667,26 @@ window.createCourseCard = function(course, isUserCourse = false) {
         </span>
       </div>
 
+      ${currentUser && !isCompleted ? `
+      <div class="course-progress-container">
+        <div class="course-progress-bar">
+          <div class="course-progress-fill" style="width: ${progressPercent}%"></div>
+        </div>
+        <div class="course-progress-text">${progressPercent}% (${completedPages}/${pageCount})</div>
+      </div>
+      ` : ''}
+
       <div class="course-actions">
         <button class="btn btn-primary btn-sm start-course-btn" data-course-id="${course.id}" data-course-title="${course.title.replace(/"/g, '&quot;')}">
           <i class="fas fa-play-circle"></i>
-          ${isCompleted ? 'Повторить' : 'Начать'}
+          ${isCompleted ? 'Повторить' : (progressPercent > 0 ? 'Продолжить' : 'Начать')}
         </button>
+        ${currentUser ? `
+        <button class="btn btn-sm quiz-btn" data-course-id="${course.id}" data-course-title="${course.title.replace(/"/g, '&quot;')}" title="Пройти тест">
+          <i class="fas fa-clipboard-question"></i>
+          Пройти тест
+        </button>
+        ` : ''}
       </div>
     </div>
   `;
@@ -207,6 +699,17 @@ window.createCourseCard = function(course, isUserCourse = false) {
       const courseId = parseInt(startBtn.getAttribute('data-course-id'));
       const courseTitle = startBtn.getAttribute('data-course-title');
       startCourse(courseId, courseTitle);
+    });
+  }
+
+  // Добавляем обработчик для кнопки квиза
+  const quizBtn = courseElement.querySelector('.quiz-btn');
+  if (quizBtn) {
+    quizBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const courseId = parseInt(quizBtn.getAttribute('data-course-id'));
+      const courseTitle = quizBtn.getAttribute('data-course-title');
+      showQuizModal(courseId, courseTitle);
     });
   }
 
@@ -253,6 +756,9 @@ async function loadProfile() {
 
     // Загружаем курсы пользователя
     loadUserCourses();
+
+    // Загружаем историю активности
+    loadActivityHistory();
   } catch (err) {
     console.error('Ошибка загрузки профиля:', err);
     const userName = currentUser?.name || 'Пользователь';
@@ -264,6 +770,7 @@ async function loadProfile() {
     // Загружаем статистику и курсы даже при ошибке
     loadProfileStats();
     loadUserCourses();
+    loadActivityHistory();
   }
 }
 
@@ -274,9 +781,103 @@ function loadProfileStats() {
   const completedCourses = allCourses.filter(c => c.completed).length;
   const inProgressCourses = allCourses.filter(c => !c.completed).length;
 
+  // Получаем прогресс пользователя
+  const userProgress = getUserProgress();
+  let totalProgress = 0;
+  let coursesWithProgress = 0;
+  let totalQuizzes = 0;
+  let bestQuizScore = 0;
+
+  allCourses.forEach(course => {
+    const progress = getCourseProgress(course.id);
+    if (progress.completedPages.length > 0) {
+      coursesWithProgress++;
+      const percent = calculateProgressPercent(course.id, course);
+      totalProgress += percent;
+    }
+
+    // Считаем квизы
+    if (progress.quizScores && progress.quizScores.length > 0) {
+      totalQuizzes += progress.quizScores.length;
+      const best = getBestQuizScore(course.id);
+      if (best && best.percentage > bestQuizScore) {
+        bestQuizScore = best.percentage;
+      }
+    }
+  });
+
+  const avgProgress = coursesWithProgress > 0 ? Math.round(totalProgress / coursesWithProgress) : 0;
+
+  // Обновляем статистику
   document.getElementById('dashboard-total-courses').textContent = allCourses.length;
   document.getElementById('dashboard-completed-courses').textContent = completedCourses;
   document.getElementById('dashboard-in-progress').textContent = inProgressCourses;
+
+  // Добавляем дополнительную статистику если элементы существуют
+  const avgProgressEl = document.getElementById('dashboard-avg-progress');
+  if (avgProgressEl) {
+    avgProgressEl.textContent = `${avgProgress}%`;
+  }
+
+  const quizzesEl = document.getElementById('dashboard-quizzes');
+  if (quizzesEl) {
+    quizzesEl.textContent = totalQuizzes;
+  }
+}
+
+// Загрузка истории активности
+function loadActivityHistory() {
+  const container = document.getElementById('dashboard-activity-list');
+  if (!container) return;
+
+  const history = getActivityHistory();
+
+  if (history.length === 0) {
+    container.innerHTML = '<p class="text-muted">История активности пока пуста. Начните обучение!</p>';
+    return;
+  }
+
+  container.innerHTML = history.map(activity => {
+    const icon = getActivityIcon(activity.actionType);
+    const color = getActivityColor(activity.actionType);
+    const timeAgo = formatActivityTime(activity.timestamp);
+
+    let actionText = '';
+    switch(activity.actionType) {
+      case 'course_started':
+        actionText = `Начал курс "${activity.data?.courseTitle || ''}"`;
+        break;
+      case 'course_completed':
+        actionText = `✅ Завершил курс "${activity.data?.courseTitle || ''}"`;
+        break;
+      case 'page_completed':
+        actionText = `📄 Страница ${activity.data?.pageIndex + 1} в курсе "${activity.data?.courseTitle || ''}"`;
+        break;
+      case 'quiz_completed':
+        actionText = `📝 Тест: ${activity.data?.score}/${activity.data?.total} (${Math.round(activity.data?.score / activity.data?.total * 100)}%)`;
+        break;
+      case 'login':
+        actionText = '🔐 Вход в систему';
+        break;
+      case 'profile_updated':
+        actionText = '✏️ Профиль обновлён';
+        break;
+      default:
+        actionText = 'Действие в системе';
+    }
+
+    return `
+      <div class="activity-item" style="border-left: 3px solid ${color}">
+        <div class="activity-icon" style="background: ${color}20; color: ${color}">
+          <i class="fas ${icon}"></i>
+        </div>
+        <div class="activity-content">
+          <div class="activity-text">${actionText}</div>
+          <div class="activity-time">${timeAgo}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // Загрузка курсов пользователя
@@ -296,6 +897,9 @@ function loadUserCourses() {
     const courseCard = createCourseCard(course, true);
     container.appendChild(courseCard);
   });
+
+  // Обновляем прогресс-бары после загрузки курсов
+  updateCourseProgressBars();
 }
 
 // Текущий курс и индекс страницы
@@ -312,6 +916,11 @@ function loadCoursePage(course, pageIndex) {
   }
 
   const page = course.pages[pageIndex];
+
+  // Получаем прогресс для отображения
+  const progressPercent = currentUser ? calculateProgressPercent(course.id, course) : 0;
+  const completedPages = currentUser ? getCourseProgress(course.id).completedPages.length : 0;
+
   let pageContent = '';
 
   // Создаем контент страницы в зависимости от типа
@@ -369,7 +978,19 @@ function loadCoursePage(course, pageIndex) {
       `;
   }
 
-  container.innerHTML = pageContent;
+  // Добавляем прогресс-бар в контейнер
+  container.innerHTML = `
+    <div class="course-progress-header">
+      <div class="course-progress-info">
+        <span><i class="fas fa-chart-line"></i> Прогресс курса</span>
+        <span>${progressPercent}% (${completedPages}/${course.pages.length})</span>
+      </div>
+      <div class="course-progress-bar-large">
+        <div class="course-progress-fill-large" style="width: ${progressPercent}%"></div>
+      </div>
+    </div>
+    ${pageContent}
+  `;
 
   // Инициализируем интерактивную схему для страниц типа diagram
   if (page.type === 'diagram') {
@@ -517,15 +1138,105 @@ function showDiagramInfo(nodeType, container) {
 function nextCoursePage() {
   if (!currentCourse) return;
 
+  // Сохраняем прогресс текущей страницы перед переходом
+  updatePageProgress(currentCourse.id, currentPageIndex);
+
   currentPageIndex++;
 
   if (currentPageIndex >= currentCourse.pages.length) {
     // Если больше нет страниц, показываем модальное окно завершения
+    // Записываем активность завершения курса
+    logActivity('course_completed', { courseId: currentCourse.id, courseTitle: currentCourse.title });
     showCompletionModal();
   } else {
     // Загружаем следующую страницу
     loadCoursePage(currentCourse, currentPageIndex);
   }
+}
+
+// Обновить отображение прогресса в карточках курсов
+function updateCourseProgressBars() {
+  console.log('[updateCourseProgressBars] Вызов функции');
+
+  // Получаем доступные курсы из localStorage
+  const availableCourses = JSON.parse(localStorage.getItem('availableCourses') || '[]');
+
+  document.querySelectorAll('.course-card').forEach(card => {
+    const startBtn = card.querySelector('.start-course-btn');
+    if (!startBtn) return;
+
+    const courseId = parseInt(startBtn.getAttribute('data-course-id'));
+    const courseTitle = startBtn.getAttribute('data-course-title');
+
+    // Ищем курс в доступных курсах
+    let course = availableCourses.find(c => c.id === courseId);
+
+    // Если не нашли, создаём заглушку
+    if (!course) {
+      course = {
+        id: courseId,
+        title: courseTitle,
+        pages: []
+      };
+    }
+
+    // Получаем прогресс (сначала из курса если загружен с сервера, потом из localStorage)
+    const courseProgress = course.userProgress || (currentUser ? getCourseProgress(courseId) : null);
+    const completedPages = courseProgress ? courseProgress.completedPages.length : 0;
+
+    // Получаем количество страниц из курса или из currentCourse если это тот же курс
+    let totalPages = course.pages ? course.pages.length : 0;
+    if (totalPages === 0 && currentCourse && currentCourse.id === courseId) {
+      totalPages = currentCourse.pages.length;
+    }
+
+    // Вычисляем процент вручную, чтобы было правильно
+    const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
+
+    const isCompleted = courseProgress?.completed || false;
+
+    console.log(`[updateCourseProgressBars] Курс ${courseId}: ${completedPages}/${totalPages} страниц = ${progressPercent}% (завершён: ${isCompleted})`);
+
+    // Обновляем или создаём прогресс-бар (показываем всегда, даже для завершённых курсов)
+    let progressContainer = card.querySelector('.course-progress-container');
+    if (!progressContainer && currentUser && totalPages > 0) {
+      const courseInfo = card.querySelector('.course-info');
+      const courseMeta = courseInfo.querySelector('.course-meta');
+      const courseActions = courseInfo.querySelector('.course-actions');
+
+      progressContainer = document.createElement('div');
+      progressContainer.className = 'course-progress-container';
+
+      // Добавляем класс для завершённого курса
+      const badgeClass = isCompleted ? 'completed' : '';
+      progressContainer.innerHTML = `
+        <div class="course-progress-bar ${badgeClass}">
+          <div class="course-progress-fill" style="width: ${progressPercent}%"></div>
+        </div>
+        <div class="course-progress-text">${progressPercent}% (${completedPages}/${totalPages}) ${isCompleted ? '✅' : ''}</div>
+      `;
+
+      if (courseMeta && courseActions) {
+        courseMeta.after(progressContainer);
+      }
+    } else if (progressContainer && currentUser && totalPages > 0) {
+      const fill = progressContainer.querySelector('.course-progress-fill');
+      const text = progressContainer.querySelector('.course-progress-text');
+      if (fill) fill.style.width = `${progressPercent}%`;
+      if (text) text.textContent = `${progressPercent}% (${completedPages}/${totalPages}) ${isCompleted ? '✅' : ''}`;
+    }
+
+    // Обновляем текст кнопки
+    if (startBtn) {
+      if (isCompleted) {
+        startBtn.innerHTML = '<i class="fas fa-redo"></i> Повторить';
+      } else if (progressPercent > 0) {
+        startBtn.innerHTML = '<i class="fas fa-play-circle"></i> Продолжить';
+      } else {
+        startBtn.innerHTML = '<i class="fas fa-play-circle"></i> Начать';
+      }
+    }
+  });
 }
 
 // ✅ Завершение курса — модальное окно с плавной анимацией
@@ -688,11 +1399,221 @@ async function startCourse(id, title) {
     currentPageIndex = 0;
     loadCoursePage(currentCourse, currentPageIndex);
     navigateTo('course');
+
+    // Записываем активность начала курса
+    logActivity('course_started', { courseId: id, courseTitle: title });
   } catch (error) {
     console.error('Ошибка при запуске курса:', error);
     alert('Ошибка при запуске курса: ' + error.message);
   }
 }
+
+// ========== ФУНКЦИИ ДЛЯ КВИЗОВ ==========
+
+// Текущее состояние квиза
+let currentQuizState = {
+  courseId: null,
+  courseTitle: '',
+  questions: [],
+  currentQuestion: 0,
+  answers: [],
+  score: 0
+};
+
+// Показать модальное окно квиза
+window.showQuizModal = function(courseId, courseTitle) {
+  if (!currentUser) {
+    navigateTo('login');
+    return;
+  }
+
+  const course = JSON.parse(localStorage.getItem('userCourses') || '[]').find(c => c.id === courseId);
+  const questions = getQuizForCourse(course || { title: courseTitle });
+
+  currentQuizState = {
+    courseId,
+    courseTitle,
+    questions,
+    currentQuestion: 0,
+    answers: [],
+    score: 0
+  };
+
+  // Показываем модальное окно
+  const modal = document.getElementById('quiz-modal');
+  if (modal) {
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+    renderQuizQuestion();
+  }
+};
+
+// Отобразить текущий вопрос
+function renderQuizQuestion() {
+  const question = currentQuizState.questions[currentQuizState.currentQuestion];
+  if (!question) return;
+
+  const container = document.getElementById('quiz-question-container');
+  if (!container) return;
+
+  // Обновляем прогресс
+  const progressEl = document.getElementById('quiz-progress');
+  if (progressEl) {
+    progressEl.textContent = `Вопрос ${currentQuizState.currentQuestion + 1} из ${currentQuizState.questions.length}`;
+  }
+
+  // Рендерим вопрос
+  container.innerHTML = `
+    <div class="quiz-question">
+      <h3 class="quiz-question-text">${question.question}</h3>
+      <div class="quiz-options">
+        ${question.options.map((option, index) => `
+          <button class="quiz-option" data-index="${index}" onclick="selectQuizAnswer(${index})">
+            <span class="quiz-option-letter">${String.fromCharCode(65 + index)}</span>
+            <span class="quiz-option-text">${option}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Выбрать ответ
+window.selectQuizAnswer = function(index) {
+  // Сохраняем ответ
+  currentQuizState.answers[currentQuizState.currentQuestion] = index;
+
+  // Проверяем правильность
+  const question = currentQuizState.questions[currentQuizState.currentQuestion];
+  const isCorrect = index === question.correct;
+
+  if (isCorrect) {
+    currentQuizState.score++;
+  }
+
+  // Визуально показываем выбор
+  const options = document.querySelectorAll('.quiz-option');
+  options.forEach((opt, i) => {
+    opt.classList.remove('selected', 'correct', 'incorrect');
+    if (i === index) {
+      opt.classList.add('selected');
+      opt.classList.add(isCorrect ? 'correct' : 'incorrect');
+    }
+    if (i === question.correct && i !== index) {
+      opt.classList.add('correct');
+    }
+    opt.disabled = true;
+  });
+
+  // Показываем кнопку "Далее"
+  const nextBtn = document.getElementById('quiz-next-btn');
+  if (nextBtn) {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = currentQuizState.currentQuestion < currentQuizState.questions.length - 1 ? 'Далее' : 'Завершить тест';
+  }
+};
+
+// Следующий вопрос
+window.nextQuizQuestion = function() {
+  if (currentQuizState.currentQuestion < currentQuizState.questions.length - 1) {
+    currentQuizState.currentQuestion++;
+    renderQuizQuestion();
+    const nextBtn = document.getElementById('quiz-next-btn');
+    if (nextBtn) nextBtn.style.display = 'none';
+  } else {
+    finishQuiz();
+  }
+};
+
+// Завершить квиз
+function finishQuiz() {
+  const total = currentQuizState.questions.length;
+  const score = currentQuizState.score;
+  const percentage = Math.round((score / total) * 100);
+
+  // Сохраняем результат
+  saveQuizResult(currentQuizState.courseId, score, total);
+
+  // Показываем результаты
+  const resultsContainer = document.getElementById('quiz-results');
+  if (resultsContainer) {
+    let message = '';
+    let icon = '';
+
+    if (percentage >= 80) {
+      message = 'Отличный результат!';
+      icon = '🏆';
+    } else if (percentage >= 60) {
+      message = 'Хороший результат!';
+      icon = '👍';
+    } else if (percentage >= 40) {
+      message = 'Неплохо, но можно лучше';
+      icon = '📚';
+    } else {
+      message = 'Попробуйте ещё раз';
+      icon = '🔄';
+    }
+
+    resultsContainer.innerHTML = `
+      <div class="quiz-results-content">
+        <div class="quiz-results-icon">${icon}</div>
+        <h3>${message}</h3>
+        <div class="quiz-score">
+          <div class="quiz-score-circle" style="--percentage: ${percentage}">
+            <span>${percentage}%</span>
+          </div>
+        </div>
+        <p class="quiz-score-text">${score} из ${total} правильных ответов</p>
+        ${percentage < 60 ? `
+          <button class="btn btn-primary" onclick="showQuizModal(${currentQuizState.courseId}, '${currentQuizState.courseTitle.replace(/'/g, "\\'")}')">
+            <i class="fas fa-redo"></i> Пройти ещё раз
+          </button>
+        ` : ''}
+      </div>
+    `;
+    resultsContainer.style.display = 'block';
+  }
+
+  // Скрываем вопрос
+  const questionContainer = document.getElementById('quiz-question-container');
+  if (questionContainer) questionContainer.style.display = 'none';
+
+  // Скрываем кнопку "Далее"
+  const nextBtn = document.getElementById('quiz-next-btn');
+  if (nextBtn) nextBtn.style.display = 'none';
+
+  // Скрываем прогресс
+  const progressEl = document.getElementById('quiz-progress');
+  if (progressEl) progressEl.style.display = 'none';
+}
+
+// Закрыть квиз
+window.closeQuizModal = function() {
+  const modal = document.getElementById('quiz-modal');
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 300);
+  }
+
+  // Сбрасываем состояние
+  const resultsContainer = document.getElementById('quiz-results');
+  if (resultsContainer) {
+    resultsContainer.style.display = 'none';
+    resultsContainer.innerHTML = '';
+  }
+
+  const questionContainer = document.getElementById('quiz-question-container');
+  if (questionContainer) {
+    questionContainer.style.display = 'block';
+  }
+
+  const progressEl = document.getElementById('quiz-progress');
+  if (progressEl) {
+    progressEl.style.display = 'block';
+  }
+};
 
 // Показать модальное окно помощи
 function showHelpModal() {
@@ -835,7 +1756,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedUser = localStorage.getItem('user');
   const savedToken = localStorage.getItem('authToken');
 
-  // Если есть сохраненные данные пользователя и токен
+  // Если ������сть сохраненные данные пользователя и токен
   if (savedUser && savedToken) {
     try {
       currentUser = JSON.parse(savedUser);
@@ -1058,38 +1979,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchBtn = document.getElementById('search-btn');
   const clearSearchBtn = document.getElementById('clear-search-btn');
 
-  // Поиск при вводе (с задержкой 300ms)
+  // Поиск при вводе с задержкой (debouncing)
   let searchTimeout = null;
   if (searchInput) {
     searchInput.addEventListener('input', function() {
       const query = this.value.trim();
 
-      // Показываем/скрываем кнопку очистки
-      if (clearSearchBtn) {
-        clearSearchBtn.style.display = query.length > 0 ? 'flex' : 'none';
+      // Очищаем предыдущий таймер
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
       }
 
-      // Debounce поиск
-      clearTimeout(searchTimeout);
-      if (query.length >= 2) {
-        searchTimeout = setTimeout(() => {
-          performSearch(query);
-        }, 300);
-      } else if (query.length === 0) {
-        // Если поиск очищен, загружаем все курсы
+      // Если запрос короче 2 символов — загружаем все курсы
+      if (query.length < 2) {
+        clearSearchBtn.style.display = 'none';
         loadCoursesWithFilter('main-course-list', window.currentTab || 'all');
+        return;
       }
-    });
 
-    // Поиск по Enter
-    searchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const query = this.value.trim();
-        if (query.length >= 2) {
-          performSearch(query);
-        }
-      }
+      // Показываем кнопку очистки
+      clearSearchBtn.style.display = 'block';
+
+      // Задержка 300мс перед поиском
+      searchTimeout = setTimeout(() => {
+        performSearch(query);
+      }, 300);
     });
   }
 
@@ -1117,16 +2031,36 @@ document.addEventListener('DOMContentLoaded', () => {
   window.performSearch = async function(query) {
     try {
       console.log('Поиск:', query);
-      const res = await fetch(`/api/courses/search?q=${encodeURIComponent(query)}`);
+
+      // Загружаем все курсы
+      const res = await fetch('/api/courses');
+
+      if (res.status === 429) {
+        console.warn('Слишком много запросов. Подождите немного.');
+        const container = document.getElementById('main-course-list');
+        if (container) {
+          container.innerHTML = '<p class="text-muted">Слишком много запросов. Подождите немного...</p>';
+        }
+        return;
+      }
+
       const data = await res.json();
-      console.log('Результаты поиска:', data);
+      let courses = data.courses || [];
+
+      // Фильтруем курсы по названию (ищем вхождение запроса)
+      const searchTerm = query.toLowerCase();
+      const filteredCourses = courses.filter(course =>
+        course.title && course.title.toLowerCase().includes(searchTerm)
+      );
+
+      console.log('Найдено курсов:', filteredCourses.length);
 
       const container = document.getElementById('main-course-list');
       if (container) {
         container.innerHTML = '';
 
-        if (data.courses && data.courses.length > 0) {
-          data.courses.forEach(course => {
+        if (filteredCourses.length > 0) {
+          filteredCourses.forEach(course => {
             const courseCard = createCourseCard(course, false);
             container.appendChild(courseCard);
           });
@@ -1143,7 +2077,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ========== ОБРАБОТЧИКИ DASHBOARD / ПРОФИЛЯ ==========
+  // ========== ��БРАБОТЧИКИ DASHBOARD / ПРОФИЛЯ ==========
   // Переключение вкладок
   const dashboardTabs = document.querySelectorAll('.dashboard-tab');
   dashboardTabs.forEach(tab => {
@@ -1164,6 +2098,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetContent = document.getElementById(`dashboard-${targetTab}`);
       if (targetContent) {
         targetContent.classList.add('active');
+
+        // Загружаем историю активности при переключении на вкладку
+        if (targetTab === 'activity') {
+          loadActivityHistory();
+        }
       }
     });
   });
@@ -1187,6 +2126,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser.email = email;
         localStorage.setItem('user', JSON.stringify(currentUser));
       }
+
+      // Записываем активность
+      logActivity('profile_updated', { name, email });
 
       alert('✅ Профиль обновлён!');
       document.getElementById('dashboard-username').textContent = name;
@@ -1279,6 +2221,8 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
       setAuthToken(result.token);
       // Обновляем меню пользователя
       showUserMenuIfLoggedIn();
+      // Записываем активность
+      logActivity('login', {});
       navigateTo('main');
     } else {
       // ✅ Показываем сообщение под формой
@@ -1321,24 +2265,69 @@ window.loadCoursesWithFilter = async function(containerId, filter) {
     let courses = data.courses || [];
     const container = document.getElementById(containerId);
 
+    console.log('[loadCoursesWithFilter] Загружено курсов:', courses.length);
+    console.log('[loadCoursesWithFilter] Первый курс:', courses[0]);
+
+    // Загружаем страницы для каждого курса
+    console.log('[loadCoursesWithFilter] Загружаем страницы курсов...');
+    const coursesWithPages = await Promise.all(courses.map(async (course) => {
+      try {
+        const courseRes = await fetch(`/api/courses/${course.id}`);
+        if (courseRes.ok) {
+          const courseData = await courseRes.json();
+          return { ...course, pages: courseData.pages || [] };
+        }
+        return course;
+      } catch (err) {
+        console.error(`Ошибка загрузки страниц для курса ${course.id}:`, err);
+        return course;
+      }
+    }));
+
+    // Фильтруем курсы без страниц (тестовые курсы)
+    const filteredCourses = coursesWithPages.filter(course => course.pages && course.pages.length > 0);
+    console.log('[loadCoursesWithFilter] Курсов с главами:', filteredCourses.length);
+
+    // Загружаем прогресс для всех курсов одним запросом (если пользователь авторизован)
+    let allProgress = {};
+    if (currentUser && authToken) {
+      console.log('[loadCoursesWithFilter] Загружаем прогресс пользователя...');
+      try {
+        allProgress = await fetchAllProgress();
+      } catch (err) {
+        console.error('Ошибка загрузки прогресса:', err);
+      }
+    }
+
+    // Применяем прогресс к курсам
+    filteredCourses.forEach(course => {
+      course.userProgress = allProgress[course.id] || getCourseProgress(course.id);
+    });
+
+    // Сохраняем курсы с страницами в localStorage для отслеживания прогресса
+    localStorage.setItem('availableCourses', JSON.stringify(filteredCourses));
+
     // Очищаем контейнер
     container.innerHTML = '';
 
     // Применяем фильтр
     if (filter === 'popular') {
       // Популярные - курсы с большим количеством страниц (имитация)
-      courses = courses.sort((a, b) => (b.pages?.length || 0) - (a.pages?.length || 0));
+      filteredCourses.sort((a, b) => (b.pages?.length || 0) - (a.pages?.length || 0));
     } else if (filter === 'new') {
       // Новинки - курсы в обратном порядке (новые сначала)
-      courses = courses.sort((a, b) => b.id - a.id);
+      filteredCourses.sort((a, b) => b.id - a.id);
     }
     // filter === 'all' - показываем все без сортировки
 
     // Создаем элементы курсов и добавляем обработчики событий
-    courses.forEach(course => {
+    filteredCourses.forEach(course => {
       const courseCard = createCourseCard(course, false);
       container.appendChild(courseCard);
     });
+
+    // Обновляем прогресс-бары после загрузки курсов
+    updateCourseProgressBars();
   } catch (err) {
     console.error('Ошибка загрузки курсов:', err);
     const container = document.getElementById(containerId);
@@ -1571,6 +2560,12 @@ document.addEventListener('DOMContentLoaded', function() {
   if (closeContactsBtn) closeContactsBtn.addEventListener('click', window.closeContactsModal);
   if (closeContactsBtnFooter) closeContactsBtnFooter.addEventListener('click', window.closeContactsModal);
 
+  // Кнопка закрытия модального окна квиза
+  const closeQuizBtn = document.getElementById('quiz-close-btn');
+  if (closeQuizBtn) {
+    closeQuizBtn.addEventListener('click', window.closeQuizModal);
+  }
+
   // Обработчик клика на оверлей мобильного меню
   const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
   if (mobileMenuOverlay) {
@@ -1583,12 +2578,16 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('click', (e) => {
     const faqModal = document.getElementById('faq-modal');
     const contactsModal = document.getElementById('contacts-modal');
+    const quizModal = document.getElementById('quiz-modal');
 
     if (e.target === faqModal) {
       window.closeFaqModal();
     }
     if (e.target === contactsModal) {
       window.closeContactsModal();
+    }
+    if (e.target === quizModal) {
+      window.closeQuizModal();
     }
   });
 });

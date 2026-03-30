@@ -3,6 +3,7 @@ const Redis = require('ioredis');
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 let redis = null;
+let redisErrorLogged = false;
 
 /**
  * Инициализация Redis подключения
@@ -13,19 +14,27 @@ function initRedis() {
     redis = new Redis(REDIS_URL, {
       maxRetriesPerRequest: 3,
       retryDelayOnFail: 1000,
-      connectTimeout: 5000
+      connectTimeout: 5000,
+      lazyConnect: true
     });
 
     redis.on('connect', () => {
       console.log('✅ Redis подключен');
+      redisErrorLogged = false;
     });
 
     redis.on('error', (err) => {
-      console.warn('⚠️  Redis ошибка:', err.message);
+      // Логируем только первую ошибку, чтобы не спамить
+      if (!redisErrorLogged) {
+        console.warn('⚠️  Redis не доступен, работа без кэша:', err.message);
+        redisErrorLogged = true;
+      }
     });
 
     redis.on('close', () => {
-      console.warn('⚠️  Redis отключен');
+      if (!redisErrorLogged) {
+        console.warn('⚠️  Redis отключен');
+      }
     });
 
     return redis;

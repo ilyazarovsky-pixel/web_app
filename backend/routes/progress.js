@@ -120,6 +120,46 @@ router.get('/progress/:courseId', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /progress — получить прогресс по всем курсам
+router.get('/progress', authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    // Получаем все записи прогресса пользователя
+    const allProgress = await all(
+      'SELECT course_id, page_index, completed_at FROM progress WHERE user_id = ? ORDER BY course_id, page_index',
+      [userId]
+    );
+
+    // Группируем по курсам
+    const progressByCourse = {};
+    allProgress.forEach(record => {
+      if (!progressByCourse[record.course_id]) {
+        progressByCourse[record.course_id] = {
+          courseId: record.course_id,
+          completedLessons: [],
+          totalCompleted: 0,
+          currentPage: 0
+        };
+      }
+      progressByCourse[record.course_id].completedLessons.push(record.page_index);
+    });
+
+    // Считаем количество завершённых страниц для каждого курса
+    Object.values(progressByCourse).forEach(progress => {
+      progress.totalCompleted = progress.completedLessons.length;
+      progress.currentPage = progress.completedLessons.length > 0
+        ? Math.max(...progress.completedLessons) + 1
+        : 0;
+    });
+
+    res.json(progressByCourse);
+  } catch (err) {
+    console.error('Ошибка получения прогресса:', err.message);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 // DELETE /progress/:courseId — сбросить прогресс по курсу
 router.delete('/progress/:courseId', authMiddleware, async (req, res) => {
   const courseId = parseInt(req.params.courseId);

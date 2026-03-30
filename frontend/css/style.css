@@ -529,12 +529,12 @@ main {
 }
 
 .course-actions .btn-primary {
-  background: linear-gradient(135deg, #1e88e5, #002b5b);
+  background: linear-gradient(135deg, #002b5b, #1e88e5);
   color: white;
 }
 
 .course-actions .btn-primary:hover {
-  background: linear-gradient(135deg, #1565c0, #001f3f);
+  background: linear-gradient(135deg, #001f3f, #1565c0);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
 }
@@ -2505,5 +2505,427 @@ input[type="date"] {
   .policy-section h3,
   .terms-section h3 {
     font-size: 1rem;
+  }
+}
+
+/* ========== ПРОГРЕСС-БАРЫ КУРСОВ ========== */
+.course-progress-container {
+  margin: 12px 0;
+  padding: 0 4px;
+}
+
+.course-progress-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.course-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  min-width: 2%;
+}
+
+/* Прогресс-бар для завершённого курса */
+.course-progress-bar.completed {
+  background: rgba(76, 175, 80, 0.2);
+}
+
+.course-progress-bar.completed .course-progress-fill {
+  background: linear-gradient(90deg, #4CAF50, #4CAF50);
+}
+
+.course-progress-text {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: right;
+}
+
+/* Прогресс-бар внутри курса */
+.course-progress-header {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.course-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+.course-progress-info i {
+  margin-right: 8px;
+  color: #4CAF50;
+}
+
+.course-progress-bar-large {
+  height: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.course-progress-fill-large {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+  min-width: 2%;
+}
+
+/* ========== ИСТОРИЯ АКТИВНОСТИ ========== */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.activity-item:hover {
+  transform: translateX(5px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-icon i {
+  font-size: 1.1rem;
+}
+
+.activity-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-text {
+  font-size: 0.95rem;
+  color: white;
+  margin-bottom: 5px;
+  word-wrap: break-word;
+}
+
+.activity-time {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ========== МОДАЛЬНОЕ ОКНО КВИЗА ========== */
+.quiz-modal-content {
+  max-width: 600px;
+  background: white;
+  color: #002b5b;
+  padding: 2rem;
+  border-radius: 16px;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.quiz-modal-content h2 {
+  color: #1e88e5;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quiz-course-title {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.quiz-progress {
+  text-align: center;
+  color: #1e88e5;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  padding: 8px 16px;
+  background: rgba(30, 136, 229, 0.1);
+  border-radius: 8px;
+}
+
+.quiz-question {
+  margin-bottom: 1.5rem;
+}
+
+.quiz-question-text {
+  font-size: 1.2rem;
+  color: #002b5b;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-option {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: #f5f5f5;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-size: 1rem;
+  color: #333;
+}
+
+.quiz-option:hover:not(:disabled) {
+  background: #e3f2fd;
+  border-color: #1e88e5;
+}
+
+.quiz-option.selected {
+  border-color: #1e88e5;
+  background: #e3f2fd;
+}
+
+.quiz-option.correct {
+  border-color: #4CAF50;
+  background: #e8f5e9;
+}
+
+.quiz-option.incorrect {
+  border-color: #f44336;
+  background: #ffebee;
+}
+
+.quiz-option:disabled {
+  cursor: default;
+}
+
+.quiz-option-letter {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1e88e5;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.quiz-option.correct .quiz-option-letter {
+  background: #4CAF50;
+}
+
+.quiz-option.incorrect .quiz-option-letter {
+  background: #f44336;
+}
+
+.quiz-option-text {
+  flex: 1;
+}
+
+.quiz-actions {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+#quiz-next-btn {
+  min-width: 150px;
+}
+
+/* Результаты квиза */
+.quiz-results-content {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.quiz-results-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.quiz-results-content h3 {
+  font-size: 1.5rem;
+  color: #002b5b;
+  margin-bottom: 1.5rem;
+}
+
+.quiz-score {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.quiz-score-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: conic-gradient(#1e88e5 var(--percentage, 0)%, #e0e0e0 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.quiz-score-circle::before {
+  content: '';
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  background: white;
+  border-radius: 50%;
+}
+
+.quiz-score-circle span {
+  position: relative;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1e88e5;
+}
+
+.quiz-score-text {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+/* Адаптивность для квиза */
+@media (max-width: 768px) {
+  .quiz-modal-content {
+    max-width: 90%;
+    padding: 1.5rem;
+  }
+
+  .quiz-question-text {
+    font-size: 1rem;
+  }
+
+  .quiz-option {
+    padding: 12px 15px;
+  }
+
+  .quiz-option-letter {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .quiz-score-circle {
+    width: 100px;
+    height: 100px;
+  }
+
+  .quiz-score-circle::before {
+    width: 75px;
+    height: 75px;
+  }
+
+  .quiz-score-circle span {
+    font-size: 1.5rem;
+  }
+}
+
+/* ========== ДОПОЛНИТЕЛЬНАЯ СТАТИСТИКА ========== */
+.stat-card {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+}
+
+/* Улучшенные кнопки в карточках курсов */
+.course-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.course-actions .btn-sm {
+  flex: 1;
+}
+
+/* Кнопка теста — стили как у кнопки "Начать курс" */
+.quiz-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  background: linear-gradient(135deg, #1e88e5, #002b5b);
+  color: white;
+}
+
+.quiz-btn:hover {
+  background: linear-gradient(135deg, #1565c0, #001f3f);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+}
+
+/* Иконка в кнопке теста */
+.quiz-btn i {
+  font-size: 1rem;
+}
+
+/* Адаптивность для прогресс-баров на мобильных */
+@media (max-width: 480px) {
+  .course-progress-text {
+    font-size: 0.7rem;
+  }
+
+  .course-progress-bar {
+    height: 6px;
+  }
+
+  .activity-item {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .activity-icon {
+    width: 35px;
+    height: 35px;
+  }
+
+  .activity-text {
+    font-size: 0.85rem;
   }
 }

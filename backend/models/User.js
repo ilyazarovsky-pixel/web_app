@@ -1,8 +1,7 @@
 const bcrypt = require('bcryptjs');
-const { run, get, initDb } = require('../utils/database');
+const { run, get } = require('../utils/database');
 
-// Инициализация БД при загрузке модуля
-initDb();
+// Не вызываем initDb() здесь — это делается в server.js или тестах
 
 class User {
   static async create(userData) {

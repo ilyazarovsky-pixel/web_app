@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { all, get } = require('../utils/database');
-const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
+const { cacheMiddleware } = require('../middleware/cache');
 
 // Получить курсы с поддержкой фильтрации по категории и поиска
 router.get('/courses', cacheMiddleware('courses:list', 300), async (req, res) => {
