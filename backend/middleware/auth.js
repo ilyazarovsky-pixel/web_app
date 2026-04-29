@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { get } = require('../utils/database');  // Добавляем импорт функции получения данных
 
 // Загружаем секрет при старте модуля
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -69,7 +70,7 @@ function generateToken(userId) {
   return accessToken;
 }
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -84,6 +85,18 @@ function authMiddleware(req, res, next) {
     // Проверяем тип токена — должен быть access
     if (decoded.type !== 'access') {
       return res.status(401).json({ error: 'Неверный тип токена' });
+    }
+
+    // Проверяем token_version с базой данных
+    const userData = await get('SELECT token_version FROM users WHERE id = ?', [decoded.id]);
+
+    if (!userData) {
+      return res.status(401).json({ error: 'Пользователь не найден' });
+    }
+
+    // Сравниваем версию токена из токена с версией в базе данных
+    if (decoded.version !== userData.token_version) {
+      return res.status(401).json({ error: 'Токен устарел. Войдите заново' });
     }
 
     req.user = decoded;

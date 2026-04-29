@@ -14,6 +14,29 @@ const http = require('http');
 const { initRedis, closeRedis, getRedis, isRedisAvailable } = require('./utils/redis');
 const { initDb } = require('./utils/database');
 
+// Import logger, request ID middleware and metrics
+const logger = require('./utils/logger');
+const requestIdMiddleware = require('./middleware/requestId');
+const { metricsMiddleware } = require('./routes/metrics');
+
+// Import Sentry
+const Sentry = require('@sentry/node');
+const { nodeProfilingIntegration } = require("@sentry/profiling-node");
+
+// Initialize Sentry if DSN is provided
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [
+      // Enable Profiling
+      nodeProfilingIntegration(),
+    ],
+    // Performance Monitoring
+    tracesSampleRate: 1.0, // Capture 100% of the transactions
+    profilesSampleRate: 1.0, // Profile 100% of the transactions
+  });
+}
+
 // Инициализируем БД при запуске сервера
 initDb();
 
@@ -97,6 +120,18 @@ const accessLogStream = rfs.createStream('access.log', {
   maxFiles: 14        // хранить 14 файлов
 });
 
+// Add request ID middleware
+app.use(requestIdMiddleware);
+
+// Use metrics middleware
+app.use(metricsMiddleware);
+
+// Add Sentry request handler if Sentry is initialized
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.requestHandler());
+  app.use(Sentry.Handlers.tracing());
+}
+
 if (process.env.NODE_ENV === 'production') {
   // Production: подробный формат в файл
   app.use(morgan('combined', { stream: accessLogStream }));
@@ -112,12 +147,41 @@ if (!fs.existsSync(dataDir)) {
   console.log('✅ Папка data создана');
 }
 
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    requestId: req.requestId
   });
+});
+
+// Ready check endpoint
+app.get('/ready', async (req, res) => {
+  try {
+    // Check if database is available
+    const { get } = require('./utils/database');
+    await get('SELECT 1');
+    
+    // Check if Redis is available
+    if (isRedisAvailable()) {
+      await getRedis().ping();
+    }
+    
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  } catch (error) {
+    logger.error({ error: error.message, requestId: req.requestId }, 'Service not ready');
+    res.status(503).json({
+      status: 'not ready',
+      error: error.message,
+      requestId: req.requestId
+    });
+  }
 });
 
 // Читаем список из переменной окружения
@@ -164,6 +228,7 @@ app.use('/api', require('./routes/api')); // Основной API курсов (
 app.use('/api', require('./routes/courses')); // Поиск курсов /api/courses/search
 app.use('/api', require('./routes/categories'));
 app.use('/api', require('./routes/admin'));
+app.use('/api', require('./routes/course-pages')); // Страницы курсов /api/course-pages
 app.use(require('./routes/profile'));
 app.use(require('./routes/stats'));
 app.use(require('./routes/enrollments'));
@@ -171,6 +236,9 @@ app.use('/api', require('./routes/progress')); // Прогресс /api/progress
 app.use(require('./routes/favorites'));
 app.use(require('./routes/reviews'));
 app.use(require('./routes/notifications'));
+
+// Metrics endpoint
+app.use('/metrics', require('./routes/metrics').router);
 
 // Swagger документация
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
@@ -204,11 +272,18 @@ app.use((req, res) => {
 // Даже если _next не используется — он должен быть в сигнатуре
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
-  // Логируем ошибку для разработчика
-  console.error('Ошибка:', err.message);
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('Stack:', err.stack);
-  }
+  // Логируем ошибку с помощью pino
+  logger.error({
+    error: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    requestId: req.requestId,
+    statusCode: res.statusCode
+  }, 'Unhandled error occurred');
+
+  // Capture error with Sentry
+  Sentry.captureException(err);
 
   // Определяем статус ответа
   const statusCode = err.status || err.statusCode || 500;
@@ -222,27 +297,33 @@ app.use((err, req, res, _next) => {
     success: false,
     error: {
       message: message,
-      status: statusCode
+      status: statusCode,
+      requestId: req.requestId
     }
   });
 });
 
+// Capture errors with Sentry if it's configured
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.errorHandler());
+}
+
 // Корректное завершение работы
 function gracefulShutdown(server, signal) {
-  console.log(`\n${signal} received. Shutting down gracefully...`);
-
+  logger.info({ signal }, 'Received shutdown signal, starting graceful shutdown');
+  
   server.close(() => {
-    console.log('HTTP server closed.');
+    logger.info('HTTP server closed');
     // Закрываем соединение с Redis
     closeRedis().then(() => {
-      console.log('Database closed.');
+      logger.info('Database closed');
       process.exit(0);
     });
   });
 
   // Если за 10 секунд не завершились — принудительно
   setTimeout(() => {
-    console.error('Forced shutdown after timeout.');
+    logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, 10000);
 }
@@ -253,7 +334,7 @@ module.exports = app;
 // Запускаем сервер только если файл запускается напрямую
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`✅ Бэкенд запущен на http://localhost:${PORT}`);
+    logger.info(`✅ Бэкенд запущен на http://localhost:${PORT}`);
   });
 
   process.on('SIGTERM', () => gracefulShutdown(server, 'SIGTERM'));

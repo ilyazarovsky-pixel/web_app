@@ -55,7 +55,9 @@ router.post('/admin/courses', requireAdmin, async (req, res) => {
     });
 
     // Инвалидируем кэш курсов
-    invalidateCache('courses:*');
+    await invalidateCache('courses:*');
+    // Также инвалидируем кэш детального представления курсов
+    await invalidateCache('courses:detail*');
   } catch (err) {
     console.error('Ошибка создания курса:', err.message);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -102,7 +104,9 @@ router.put('/admin/courses/:id', requireAdmin, async (req, res) => {
     });
 
     // Инвалидируем кэш курсов
-    invalidateCache('courses:*');
+    await invalidateCache('courses:*');
+    // Также инвалидируем кэш конкретного курса, включая его страницы
+    await invalidateCache(`courses:detail*`);
   } catch (err) {
     console.error('Ошибка обновления курса:', err.message);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -124,20 +128,34 @@ router.delete('/admin/courses/:id', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Курс не найден' });
     }
 
+    // Выполняем удаление в транзакции
+    await run('BEGIN TRANSACTION');
+
     // Удаляем связанные отзывы и прогресс
     await run('DELETE FROM reviews WHERE course_id = ?', [id]);
     await run('DELETE FROM progress WHERE course_id = ?', [id]);
     await run('DELETE FROM favorites WHERE course_id = ?', [id]);
     await run('DELETE FROM enrollments WHERE course_id = ?', [id]);
+    await run('DELETE FROM course_pages WHERE course_id = ?', [id]);  // Также удаляем страницы курса
 
     // Удаляем курс
     await run('DELETE FROM courses WHERE id = ?', [id]);
 
+    await run('COMMIT');
+
     res.json({ message: 'Курс удалён' });
 
-    // Инвалидируем кэш курсов
-    invalidateCache('courses:*');
+    // Инвалидируем кэш курсов - теперь с правильными ключами
+    await invalidateCache('courses:*');
+    await invalidateCache('course-pages:*'); // Также инвалидируем кэш страниц курсов
   } catch (err) {
+    // Откатываем транзакцию в случае ошибки
+    try {
+      await run('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('Ошибка отката транзакции:', rollbackErr.message);
+    }
+    
     console.error('Ошибка удаления курса:', err.message);
     res.status(500).json({ error: 'Ошибка сервера' });
   }

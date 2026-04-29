@@ -6,36 +6,6 @@ const dbPath = path.join(__dirname, '../data/database.db');
 
 let db = null;
 
-// Инициализация базы данных
-async function initDb() {
-  const SQL = await initSqlJs();
-
-  // Загружаем существующую БД или создаём новую
-  try {
-    if (fs.existsSync(dbPath)) {
-      const fileBuffer = fs.readFileSync(dbPath);
-      db = new SQL.Database(fileBuffer);
-    } else {
-      db = new SQL.Database();
-    }
-  } catch (err) {
-    console.error('Ошибка загрузки БД:', err);
-    db = new SQL.Database();
-  }
-
-  // Создаём таблицы
-  createTables();
-
-  // Заполняем начальными данными
-  seedCourses();
-
-  // Заполняем страницы курсов
-  seedCoursePages();
-
-  // Сохраняем БД на диск
-  saveDb();
-}
-
 const createTables = () => {
   // Проверяем существует ли таблица users
   const userTableExists = db.prepare('SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'users\'').step();
@@ -181,6 +151,56 @@ const createTables = () => {
     )
   `);
 };
+
+// Создание индексов
+const createIndexes = () => {
+  // Индексы для повышения производительности
+  try {
+    db.run('CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_enrollments_user_id ON enrollments(user_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_enrollments_course_id ON enrollments(course_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_reviews_course_id ON reviews(course_id)');
+  } catch (err) {
+    console.error('Ошибка при создании индексов:', err);
+  }
+};
+
+// Инициализация базы данных
+async function initDb() {
+  const SQL = await initSqlJs();
+
+  // Загружаем существующую БД или создаём новую
+  try {
+    if (fs.existsSync(dbPath)) {
+      const fileBuffer = fs.readFileSync(dbPath);
+      db = new SQL.Database(fileBuffer);
+    } else {
+      db = new SQL.Database();
+    }
+  } catch (err) {
+    console.error('Ошибка загрузки БД:', err);
+    db = new SQL.Database();
+  }
+
+  // Включаем внешние ключи
+  db.run('PRAGMA foreign_keys = ON');
+
+  // Создаём таблицы
+  createTables();
+
+  // Создаём индексы
+  createIndexes();
+
+  // Заполняем начальными данными
+  seedCourses();
+
+  // Заполняем страницы курсов
+  seedCoursePages();
+
+  // Сохраняем БД на диск
+  saveDb();
+
+}
 
 const seedCourses = () => {
   console.log('📚 Проверка начальных данных...');
@@ -641,4 +661,17 @@ function all(sql, params = []) {
   return Promise.resolve(results);
 }
 
+// Экспортируем функции
 module.exports = { initDb, run, get, all, createTables, saveDb, seedCourses, seedCoursePages };
+
+// Запуск приложения
+if (require.main === module) {
+  initDb()
+    .then(() => {
+      console.log('✅ База данных инициализирована');
+    })
+    .catch(err => {
+      console.error('❌ Ошибка инициализации базы данных:', err);
+      process.exit(1);
+    });
+}

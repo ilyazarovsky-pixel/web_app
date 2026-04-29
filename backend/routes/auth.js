@@ -7,7 +7,7 @@ const {
   validateBirthDate,
   validateAge
 } = require('../utils/validation');
-const { generateTokens } = require('../middleware/auth');
+const { generateTokens, authMiddleware } = require('../middleware/auth'); // Добавляем authMiddleware
 const { run, get } = require('../utils/database');
 const router = express.Router();
 
@@ -69,7 +69,7 @@ router.post('/register', async (req, res) => {
     if (err.message.includes('уже существует')) {
       return res.status(400).json({
         success: false,
-        message: 'Пользователь с таким email уже существует'
+        message: err.message // This will either be 'Пользователь с таким email уже существует' or 'Пользователь с таким именем уже существует'
       });
     }
 
@@ -183,7 +183,8 @@ router.post('/refresh', async (req, res) => {
 
 // POST /auth/logout — выход с инвалидацией токена
 router.post('/logout', async (req, res) => {
-  const { userId } = req.body;
+  // Используем userId из токена, который был проверен authMiddleware
+  const userId = req.user.id;
 
   if (!userId) {
     return res.status(400).json({

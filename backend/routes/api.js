@@ -69,7 +69,7 @@ router.get('/courses', cacheMiddleware('courses:list', 300), async (req, res) =>
 });
 
 // Получить конкретный курс по ID
-router.get('/courses/:id', async (req, res) => {
+router.get('/courses/:id', cacheMiddleware('courses:detail', 600), async (req, res) => {
   const id = parseInt(req.params.id);
 
   if (isNaN(id) || id <= 0) {

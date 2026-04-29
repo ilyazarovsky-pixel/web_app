@@ -2,6 +2,66 @@
 let currentUser = null;
 let authToken = null;
 
+// ========== ОПТИМИЗАЦИЯ ЗАПРОСОВ (Debounce & Cache) ==========
+
+// Кэш для хранения загруженных данных курсов
+const coursesCache = {
+  data: null,
+  timestamp: null,
+  ttl: 60000 // 1 минута
+};
+
+// Debounce таймер для фильтров
+let filterDebounceTimer = null;
+const FILTER_DEBOUNCE_DELAY = 300; // 300мс задержка
+
+// Функция debounce для предотвращения множественных запросов
+function debounceFilter(fn, delay) {
+  return function(...args) {
+    // Очищаем предыдущий таймер
+    if (filterDebounceTimer) {
+      clearTimeout(filterDebounceTimer);
+    }
+
+    // Устанавливаем новый таймер
+    filterDebounceTimer = setTimeout(() => {
+      fn.apply(this, args);
+      filterDebounceTimer = null;
+    }, delay);
+  };
+}
+
+// Проверка актуальности кэша
+function isCacheValid() {
+  return coursesCache.data &&
+         coursesCache.timestamp &&
+         (Date.now() - coursesCache.timestamp) < coursesCache.ttl;
+}
+
+// Получение данных из кэша или загрузка с сервера
+async function getCoursesData() {
+  if (isCacheValid()) {
+    console.log('[Cache] Используем кэшированные данные курсов');
+    return coursesCache.data;
+  }
+
+  console.log('[Cache] Загружаем данные курсов с сервера');
+  const res = await fetch('/api/courses');
+  const data = await res.json();
+
+  // Сохраняем в кэш
+  coursesCache.data = data.courses || [];
+  coursesCache.timestamp = Date.now();
+
+  return coursesCache.data;
+}
+
+// Очистка кэша (при необходимости)
+function clearCoursesCache() {
+  coursesCache.data = null;
+  coursesCache.timestamp = null;
+}
+
 // ========== СИСТЕМА ПРОГРЕССА И АКТИВНОСТИ ==========
 
 // Получить прогресс пользователя из localStorage (резервное хранилище)
@@ -627,7 +687,7 @@ window.logout = function() {
 window.loadCourses = async function(containerId) {
   // Используем текущую вкладку для фильтрации
   const filter = window.currentTab || 'all';
-  loadCoursesWithFilter(containerId, filter);
+  debouncedLoadCoursesWithFilter(containerId, filter);
 }
 
 // Создание карточки курса (по аналогии с createGameCard из GameLibrary)
@@ -907,7 +967,7 @@ let currentCourse = null;
 let currentPageIndex = 0;
 
 // Загрузка конкретной страницы курса
-function loadCoursePage(course, pageIndex) {
+function loadCoursePage(course, pageIndex, animate = false, direction = 'forward') {
   const container = document.querySelector('.course-pages-container');
   if (!course.pages || pageIndex >= course.pages.length) {
     // Если страницы нет, показываем сообщение или завершаем курс
@@ -979,7 +1039,7 @@ function loadCoursePage(course, pageIndex) {
   }
 
   // Добавляем прогресс-бар в контейнер
-  container.innerHTML = `
+  const newContent = `
     <div class="course-progress-header">
       <div class="course-progress-info">
         <span><i class="fas fa-chart-line"></i> Прогресс курса</span>
@@ -992,17 +1052,52 @@ function loadCoursePage(course, pageIndex) {
     ${pageContent}
   `;
 
-  // Инициализируем интерактивную схему для страниц типа diagram
-  if (page.type === 'diagram') {
-    initInteractiveDiagram(pageIndex, page.title || '');
+  // Применяем анимацию если нужно
+  if (animate) {
+    const leaveClass = direction === 'forward' ? 'page-transition-leave' : 'page-transition-leave-back';
+    const enterClass = direction === 'forward' ? 'page-transition-enter' : 'page-transition-enter-back';
+
+    container.classList.add(leaveClass);
+
+    setTimeout(() => {
+      container.innerHTML = newContent;
+      container.classList.remove(leaveClass);
+      container.classList.add(enterClass);
+
+      // Удаляем класс анимации после завершения
+      setTimeout(() => {
+        container.classList.remove(enterClass);
+      }, 400);
+
+      // Инициализируем интерактивную схему для страниц типа diagram
+      if (page.type === 'diagram') {
+        initInteractiveDiagram(pageIndex, page.title || '');
+      }
+    }, 350);
+  } else {
+    container.innerHTML = newContent;
+
+    // Инициализируем интерактивную схему для страниц типа diagram
+    if (page.type === 'diagram') {
+      initInteractiveDiagram(pageIndex, page.title || '');
+    }
   }
 
-  // Обновляем текст кнопки "Далее"
+  // Обновляем текст кнопки "Далее" и управляем видимостью кнопок
   const nextButton = document.getElementById('next-btn');
-  if (pageIndex >= course.pages.length - 1) {
-    nextButton.textContent = 'Завершить курс';
-  } else {
-    nextButton.textContent = 'Далее';
+  const prevButton = document.getElementById('prev-btn');
+
+  // Показываем/скрываем кнопку "Назад"
+  if (prevButton) {
+    prevButton.style.display = pageIndex === 0 ? 'none' : 'inline-flex';
+  }
+
+  if (nextButton) {
+    if (pageIndex >= course.pages.length - 1) {
+      nextButton.textContent = 'Завершить курс';
+    } else {
+      nextButton.innerHTML = 'Далее <i class="fas fa-arrow-right"></i>';
+    }
   }
 }
 
@@ -1149,9 +1244,19 @@ function nextCoursePage() {
     logActivity('course_completed', { courseId: currentCourse.id, courseTitle: currentCourse.title });
     showCompletionModal();
   } else {
-    // Загружаем следующую страницу
-    loadCoursePage(currentCourse, currentPageIndex);
+    // Загружаем следующую страницу с анимацией
+    loadCoursePage(currentCourse, currentPageIndex, true, 'forward');
   }
+}
+
+// Функция для перехода к предыдущей странице
+function prevCoursePage() {
+  if (!currentCourse || currentPageIndex <= 0) return;
+
+  currentPageIndex--;
+
+  // Загружаем предыдущую страницу с анимацией
+  loadCoursePage(currentCourse, currentPageIndex, true, 'backward');
 }
 
 // Обновить отображение прогресса в карточках курсов
@@ -1718,7 +1823,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     }
   } catch (err) {
     console.error('Ошибка при регистрации:', err);
-    alert('⚠️ Ошибка подключения к серверу');
+    alert('⚠️ Ошибка подк����ючения к серверу');
   }
 });
 
@@ -1729,7 +1834,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const birthInput = document.getElementById('birthDate');
   if (birthInput) birthInput.max = today;
 
-  // Обработчик закрытия модального окна по клику вне
+  // Обработчик закрытия модального окна по клик�� вне
   window.addEventListener('click', (e) => {
     const modal = document.getElementById('completion-modal');
     if (e.target === modal) closeModal();
@@ -1851,6 +1956,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const nextBtn = document.getElementById('next-btn');
   if (nextBtn) {
     nextBtn.addEventListener('click', nextCoursePage);
+  }
+
+  // Обработчик для кнопки "Назад" в курсе
+  const prevBtn = document.getElementById('prev-btn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', prevCoursePage);
   }
 
   // ========== ОБРАБОТЧИКИ ВЫПАДАЮЩЕГО МЕНЮ ПОЛЬЗОВАТЕЛЯ ==========
@@ -1993,7 +2104,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Если запрос короче 2 символов — загружаем все курсы
       if (query.length < 2) {
         clearSearchBtn.style.display = 'none';
-        loadCoursesWithFilter('main-course-list', window.currentTab || 'all');
+        debouncedLoadCoursesWithFilter('main-course-list', window.currentTab || 'all');
         return;
       }
 
@@ -2023,7 +2134,7 @@ document.addEventListener('DOMContentLoaded', () => {
       searchInput.value = '';
       clearSearchBtn.style.display = 'none';
       searchInput.focus();
-      loadCoursesWithFilter('main-course-list', window.currentTab || 'all');
+      debouncedLoadCoursesWithFilter('main-course-list', window.currentTab || 'all');
     });
   }
 
@@ -2032,20 +2143,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       console.log('Поиск:', query);
 
-      // Загружаем все курсы
-      const res = await fetch('/api/courses');
-
-      if (res.status === 429) {
-        console.warn('Слишком много запросов. Подождите немного.');
-        const container = document.getElementById('main-course-list');
-        if (container) {
-          container.innerHTML = '<p class="text-muted">Слишком много запросов. Подождите немного...</p>';
-        }
-        return;
-      }
-
-      const data = await res.json();
-      let courses = data.courses || [];
+      // Используем кэш для получения курсов
+      const courses = await getCoursesData();
 
       // Фильтруем курсы по названию (ищем вхождение запроса)
       const searchTerm = query.toLowerCase();
@@ -2252,29 +2351,50 @@ window.switchTab = function(tabName) {
     activeTab.classList.add('active');
   }
 
-  // Загружаем курсы с фильтрацией
-  loadCoursesWithFilter('main-course-list', tabName);
+  // Используем debounced версию для предотвращения множественных запросов
+  debouncedLoadCoursesWithFilter('main-course-list', tabName);
 }
 
 // Загрузка курсов с фильтрацией по вкладке
 window.loadCoursesWithFilter = async function(containerId, filter) {
   try {
-    const res = await fetch('/api/courses');
-    const data = await res.json();
-    // API возвращает { courses: [...], pagination: {...} }
-    let courses = data.courses || [];
     const container = document.getElementById(containerId);
+    if (!container) {
+      console.error('Контейнер для курсов не найден');
+      return;
+    }
+
+    // Используем кэш для получения базовых данных курсов
+    console.log('[loadCoursesWithFilter] Загружаем курсы...');
+    const courses = await getCoursesData();
 
     console.log('[loadCoursesWithFilter] Загружено курсов:', courses.length);
-    console.log('[loadCoursesWithFilter] Первый курс:', courses[0]);
+    if (courses.length > 0) {
+      console.log('[loadCoursesWithFilter] Первый курс:', courses[0]);
+    }
 
-    // Загружаем страницы для каждого курса
+    // Загружаем страницы для каждого курса (с кэшированием запросов)
     console.log('[loadCoursesWithFilter] Загружаем страницы курсов...');
     const coursesWithPages = await Promise.all(courses.map(async (course) => {
       try {
+        // Проверяем localStorage кэш для страниц курса
+        const cachedPages = localStorage.getItem(`course_pages_${course.id}`);
+        if (cachedPages) {
+          const parsed = JSON.parse(cachedPages);
+          // Проверяем актуальность кэша (5 минут)
+          if (Date.now() - parsed.timestamp < 300000) {
+            return { ...course, pages: parsed.data };
+          }
+        }
+
         const courseRes = await fetch(`/api/courses/${course.id}`);
         if (courseRes.ok) {
           const courseData = await courseRes.json();
+          // Кэшируем страницы в localStorage
+          localStorage.setItem(`course_pages_${course.id}`, JSON.stringify({
+            data: courseData.pages || [],
+            timestamp: Date.now()
+          }));
           return { ...course, pages: courseData.pages || [] };
         }
         return course;
@@ -2336,6 +2456,11 @@ window.loadCoursesWithFilter = async function(containerId, filter) {
     }
   }
 }
+
+// Debounced версия функции loadCoursesWithFilter
+const debouncedLoadCoursesWithFilter = debounceFilter((containerId, filter) => {
+  window.loadCoursesWithFilter(containerId, filter);
+}, FILTER_DEBOUNCE_DELAY);
 
 // ========== ФУНКЦИИ ДЛЯ МОДАЛЬНОГО ОКНА ПОМОЩИ ==========
 window.showHelpModal = function() {

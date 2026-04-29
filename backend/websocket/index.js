@@ -5,8 +5,8 @@ const { run } = require('../utils/database');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-unsafe-key';
 
 let io = null;
-// Map для хранения соответствия userId -> socketId
-const userSockets = new Map();
+// Map для хранения соответствия userId -> Set<socketId>
+const userSockets = new Map(); // userId -> Set<socketId>
 
 /**
  * Сохранить уведомление в базу данных
@@ -31,14 +31,16 @@ async function saveNotificationToDb(userId, type, data) {
  * @param {Object} data - Данные уведомления
  */
 async function sendNotificationToUser(userId, data) {
-  const socketId = userSockets.get(userId);
+  const socketIds = userSockets.get(userId);
 
   // Сохраняем уведомление в БД
   await saveNotificationToDb(userId, data.type, data);
 
   // Отправляем WebSocket уведомление если пользователь онлайн
-  if (socketId && io) {
-    io.to(socketId).emit('notification', data);
+  if (socketIds && io) {
+    for (const socketId of socketIds) {
+      io.to(socketId).emit('notification', data);
+    }
     return true;
   }
   return false;

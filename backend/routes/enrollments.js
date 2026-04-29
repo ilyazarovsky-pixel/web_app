@@ -27,6 +27,8 @@ const { sendNotificationToUser } = require('../websocket');
  *         description: Успешная запись на курс
  *       400:
  *         description: Ошибка валидации или уже записан
+ *       404:
+ *         description: Курс не найден
  *       401:
  *         description: Неавторизован
  */
@@ -40,19 +42,27 @@ router.post('/enrollments', authMiddleware, async (req, res) => {
   }
 
   try {
-    // Получаем информацию о курсе для уведомления автора
-    const course = await get('SELECT title, author_id FROM courses WHERE id = ?', [courseId]);
+    // Проверяем существование курса
+    const course = await get('SELECT id, title, author_id FROM courses WHERE id = ?', [courseId]);
+    if (!course) {
+      return res.status(404).json({ error: 'Курс не найден' });
+    }
 
     // Получаем имя студента для уведомления
     const student = await get('SELECT name FROM users WHERE id = ?', [userId]);
+
+    // Выполняем операцию в транзакции
+    await run('BEGIN TRANSACTION');
 
     await run(
       'INSERT INTO enrollments (user_id, course_id) VALUES (?, ?)',
       [userId, courseId]
     );
 
+    await run('COMMIT');
+
     // Отправляем уведомление автору курса если он существует и это не сам студент
-    if (course && course.author_id && course.author_id !== userId) {
+    if (course.author_id && course.author_id !== userId) {
       const notificationData = {
         type: 'new_enrollment',
         courseId,
@@ -67,6 +77,13 @@ router.post('/enrollments', authMiddleware, async (req, res) => {
 
     res.json({ message: 'Вы записались на курс' });
   } catch (err) {
+    // Откатываем транзакцию в случае ошибки
+    try {
+      await run('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('Ошибка отката транзакции:', rollbackErr.message);
+    }
+
     if (err.message.includes('UNIQUE constraint failed')) {
       return res.status(400).json({ error: 'Вы уже записаны на этот курс' });
     }
@@ -149,6 +166,16 @@ router.delete('/enrollments/:courseId', authMiddleware, async (req, res) => {
   }
 
   try {
+    // Проверяем существование курса и что пользователь действительно записан на него
+    const enrollmentCheck = await get(
+      'SELECT id FROM enrollments WHERE user_id = ? AND course_id = ?',
+      [userId, courseId]
+    );
+
+    if (!enrollmentCheck) {
+      return res.status(404).json({ error: 'Вы не записаны на этот курс' });
+    }
+
     const { changes } = await run(
       'DELETE FROM enrollments WHERE user_id = ? AND course_id = ?',
       [userId, courseId]
@@ -175,10 +202,14 @@ router.put('/enrollments/:courseId/complete', authMiddleware, async (req, res) =
   }
 
   try {
-    await run(
+    const result = await run(
       'UPDATE enrollments SET completed_at = CURRENT_TIMESTAMP WHERE user_id = ? AND course_id = ?',
       [userId, courseId]
     );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Вы не записаны на этот курс' });
+    }
 
     res.json({ message: 'Курс завершён' });
   } catch (err) {

@@ -321,6 +321,9 @@
             <!-- Страницы курса будут загружаться сюда -->
           </div>
           <div class="course-navigation">
+            <button class="prev-btn" id="prev-btn" style="display: none;">
+              <i class="fas fa-arrow-left"></i> Назад
+            </button>
             <button class="next-btn" id="next-btn">Далее</button>
           </div>
         </div>
@@ -642,7 +645,32 @@
       </div>
     </div>
 
-    <script src="js/main.js?v=29"></script>
+    <!-- ✅ Модальное окно: Квиз -->
+    <div id="quiz-modal" class="modal">
+      <div class="modal-content quiz-modal-content">
+        <span class="close-btn" id="quiz-close-btn" onclick="closeQuizModal()">&times;</span>
+        <h2><i class="fas fa-clipboard-question"></i> Проверка знаний</h2>
+        <p id="quiz-course-title" class="quiz-course-title"></p>
+
+        <div class="quiz-progress" id="quiz-progress">Вопрос 1 из 5</div>
+
+        <div id="quiz-question-container">
+          <!-- Вопросы будут загружены здесь -->
+        </div>
+
+        <div id="quiz-results" style="display: none;">
+          <!-- Результаты будут показаны здесь -->
+        </div>
+
+        <div class="quiz-actions">
+          <button class="btn btn-primary" id="quiz-next-btn" style="display: none;" onclick="nextQuizQuestion()">
+            Далее <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/main.js?v=30"></script>
   </div>
 </body>
 </html>

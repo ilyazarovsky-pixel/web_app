@@ -1,122 +1,184 @@
-# LearnHub
+# LearnHub - образовательная веб-платформа
 
-Образовательная веб-платформа для онлайн-обучения.
+Educational platform для онлайн-обучения с адаптивным дизайном и интерактивными возможностями (многостраничные курсы, анимированные схемы, прогресс обучения).
 
-## Технологии
+## Особенности
 
-- **Backend:** Node.js, Express
-- **Database:** SQLite
-- **Auth:** JWT (JSON Web Tokens) с Refresh токенами
-- **Containerization:** Docker
-- **File Upload:** Multer
-- **Email:** Nodemailer
-- **API Docs:** Swagger UI
-
-## Возможности
-
-- ✅ Регистрация и аутентификация (JWT + Refresh токены)
-- ✅ Просмотр и поиск курсов по категориям
-- ✅ Запись на курсы и отслеживание прогресса
-- ✅ **Многостраничные курсы** с текстовым контентом, видео и интерактивными схемами
-- ✅ **Интерактивные схемы** с анимацией и информацией об элементах
-- ✅ **Модальное окно завершения курса** с поздравлением
+- ✅ JWT аутентификация с Refresh Token
+- ✅ Авторизация (user/admin)
+- ✅ Ролевая модель (admin/user)
+- ✅ CRUD курсы (только для admin)
+- ✅ Регистрация/авторизация
+- ✅ Профиль пользователя (редактирование, загрузка аватара)
+- ✅ Курсы (просмотр, поиск, фильтрация)
+- ✅ Запись на курсы
+- ✅ Прогресс обучения
+- ✅ Отзывы и рейтинги
 - ✅ Избранные курсы
-- ✅ Отзывы и рейтинги курсов
-- ✅ Редактирование профиля и загрузка аватара
-- ✅ Удаление аккаунта
-- ✅ Админ-панель для управления курсами и пользователями
-- ✅ Email уведомления (приветствие, сброс пароля)
-- ✅ Swagger документация API
+- ✅ Категории курсов
+- ✅ Интерактивные элементы (анимированные схемы)
+- ✅ Многостраничные курсы
+- ✅ Уведомления
+- ✅ API документация (Swagger)
+- ✅ Docker и Docker Compose
+- ✅ Тестирование (unit, integration, e2e)
+- ✅ Безопасность (Helmet, CORS, Rate Limiting)
+- ✅ Логирование (Morgan)
+- ✅ WebSocket уведомления
+- ✅ Кэширование (Redis)
+- ✅ Рейт-лимит (Redis-based)
+- ✅ Структурное логирование (Pino)
+- ✅ Метрики (Prometheus)
+- ✅ Отслеживание ошибок (Sentry)
 
-## Быстрый старт
+## Установка
 
-### Без Docker
-
-1. Клонируй репозиторий:
+1. Клонируйте репозиторий:
    ```bash
    git clone https://github.com/ilyazarovsky-pixel/web_app.git
    cd web_app
    ```
 
-2. Установи зависимости:
+2. Установите зависимости:
    ```bash
    npm install
    ```
 
-3. Создай файл окружения:
+3. Создайте `.env` файл:
    ```bash
    cp .env.example .env
-   # Заполни переменные в .env
    ```
+   
+4. Заполните `.env` файл:
+   - `JWT_SECRET` - секретный ключ для JWT (генерируется командой ниже)
+   - `SMTP_*` - настройки SMTP для отправки почты
+   - `SENTRY_DSN` - DSN для Sentry (опционально)
 
-4. Запусти сервер:
+   Генерация JWT_SECRET:
    ```bash
-   npm run dev    # режим разработки (с автоперезагрузкой)
-   npm start      # production режим
+   node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
    ```
 
-5. Открой в браузере: http://localhost:3000
+## Запуск
 
-### С Docker
+### Dev режим (hot reload)
 
 ```bash
-docker-compose up --build
+# Backend (nodemon)
+npm run dev
+
+# Frontend (live-server)
+npm run frontend
 ```
 
-## API документация
+### Production режим
 
-После запуска сервера откройте Swagger UI:
-- **Swagger:** http://localhost:3000/api-docs
-
-Подробное описание API — в файле [API.md](./API.md)
-
-## Структура проекта
-
-```
-├── backend/
-│   ├── server.js          # Основной сервер Express
-│   ├── middleware/        # Middleware (auth, roles, upload)
-│   ├── routes/            # Маршруты API
-│   │   ├── auth.js        # Аутентификация
-│   │   ├── profile.js     # Профиль пользователя
-│   │   ├── api.js         # Курсы
-│   │   ├── categories.js  # Категории
-│   │   ├── enrollments.js # Запись на курсы
-│   │   ├── progress.js    # Прогресс
-│   │   ├── favorites.js   # Избранное
-│   │   ├── reviews.js     # Отзывы
-│   │   ├── admin.js       # Админ-панель
-│   │   └── ...
-│   ├── models/            # Модели данных
-│   ├── utils/             # Утилиты (БД, валидация, email, swagger)
-│   ├── uploads/           # Загруженные файлы (аватары)
-│   └── data/              # SQLite база данных
-├── frontend/
-│   ├── index.html         # Главная страница
-│   ├── 404.html           # Страница ошибки
-│   └── ...                # CSS, JS файлы
-├── .github/workflows/     # CI/CD (GitHub Actions)
-├── Dockerfile             # Конфигурация Docker
-├── docker-compose.yml     # Docker Compose
-├── API.md                 # Документация API
-└── README.md              # Этот файл
-```
-
-## Переменные окружения
-
-См. `.env.example`:
-- `JWT_SECRET` — секретный ключ для JWT (обязательно в production!)
-- `SMTP_*` — настройки SMTP сервера для email уведомлений
-
-## Роли пользователей
-
-- **user** — обычный пользователь
-- **admin** — администратор (может управлять курсами и пользователялями)
-
-Для назначения роли администратора используйте API:
 ```bash
-PUT /api/admin/users/:id/role
-{
-  "role": "admin"
-}
+# Через Docker Compose
+docker-compose up --build -d
+
+# Или через npm
+npm start
 ```
+
+### Docker Compose (production)
+
+```bash
+# Запуск
+docker-compose -f docker-compose.prod.yml up --build -d
+
+# Просмотр логов
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Остановка
+docker-compose -f docker-compose.prod.yml down
+```
+
+## Деплой
+
+Для деплоя используется скрипт `deploy.sh`:
+
+```bash
+# Запуск деплоя
+./deploy.sh
+
+# В случае проблем можно выполнить откат к предыдущей версии
+./deploy.sh rollback
+```
+
+Скрипт делает следующее:
+1. Проверяет наличие .env и docker-compose.prod.yml файлов
+2. Обновляет код из репозитория (git pull)
+3. Создает резервную копию текущего образа как learnhub:rollback
+4. Собирает новые Docker образы
+5. Останавливает старые контейнеры
+6. Запускает новые контейнеры
+7. Проверяет health-checks
+8. В случае ошибки - автоматически откатывается к предыдущей версии
+9. Очищает старые образы
+
+## API
+
+API документация доступна по адресу: `http://localhost:3000/api-docs`
+
+## Тестирование
+
+### Unit/Integration тесты
+
+```bash
+npm test
+```
+
+### E2E тесты (Playwright)
+
+```bash
+# Запуск
+npm run test:e2e
+
+# Запуск в UI режиме
+npm run test:e2e:ui
+```
+
+### Линтер
+
+```bash
+npm run lint
+```
+
+## Стек технологий
+
+- **Frontend**: HTML, CSS, JS
+- **Backend**: Node.js, Express.js
+- **База данных**: SQLite (embedded)
+- **Кэш/Rate Limiting**: Redis
+- **Авторизация**: JWT
+- **Документация**: Swagger
+- **Тестирование**: Jest, Playwright
+- **Контейнеризация**: Docker, Docker Compose
+- **Логирование**: Pino
+- **Метрики**: Prometheus
+- **Отслеживание ошибок**: Sentry
+
+## Архитектура
+
+См. [ARCHITECTURE.md](ARCHITECTURE.md) для подробного описания архитектуры проекта.
+
+## Технический долг
+
+См. [TECH_DEBT.md](TECH_DEBT.md) для списка известных проблем и задач по улучшению проекта.
+
+## Откат к предыдущей версии
+
+Если произошла ошибка во время деплоя, вы можете выполнить откат к предыдущей версии:
+
+```bash
+# Вручную
+docker tag learnhub:rollback learnhub:latest
+docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker-compose.prod.yml up -d
+
+# Или с помощью скрипта (если он реализован)
+./deploy.sh rollback
+```
+
+Скрипт деплоя автоматически создает резервную копию перед каждым деплоем и может выполнить откат в случае ошибки.

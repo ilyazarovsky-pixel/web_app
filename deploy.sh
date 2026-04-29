@@ -1,9 +1,35 @@
 #!/bin/bash
+set -euo pipefail
 
 # =============================================================================
 # LearnHub Deployment Script
 # Использование: ./deploy.sh
 # =============================================================================
+
+# Функция для отката
+rollback() {
+    local error_code=$?
+    log_error "Ошибка в деплое (код: $error_code), выполняется откат..."
+    
+    # Восстанавливаем старый образ если он был сохранен
+    if [ "$(docker images -q learnhub:rollback 2> /dev/null)" != "" ]; then
+        log_info "Восстановление предыдущей версии из learnhub:rollback..."
+        docker tag learnhub:rollback learnhub:latest
+        docker rmi learnhub:rollback 2>/dev/null || true
+        
+        # Перезапускаем сервисы с восстановленным образом
+        docker-compose -f docker-compose.prod.yml down
+        docker-compose -f docker-compose.prod.yml up -d
+        log_success "Откат на предыдущую версию завершён"
+    else
+        log_warning "Резервная копия образа не найдена, невозможно выполнить откат"
+    fi
+    
+    exit $error_code
+}
+
+# Устанавливаем trap для перехвата ошибок
+trap rollback ERR
 
 # Цвета для вывода
 RED='\033[0;31m'
@@ -78,6 +104,17 @@ log_success "Код обновлён"
 # =============================================================================
 # Шаг 3: Сборка образов
 # =============================================================================
+log_info "Подготовка к сборке..."
+
+# Сохраняем текущий образ как резервный перед сборкой
+if [ "$(docker images -q learnhub:latest 2> /dev/null)" != "" ]; then
+    log_info "Создание резервной копии текущего образа learnhub:latest..."
+    docker tag learnhub:latest learnhub:rollback
+    log_success "Резервная копия learnhub:rollback создана"
+else
+    log_info "Текущий образ learnhub:latest не найден, пропускаем создание резервной копии"
+fi
+
 log_info "Сборка Docker образов..."
 
 docker-compose -f docker-compose.prod.yml build

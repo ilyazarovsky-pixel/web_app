@@ -8,9 +8,15 @@ class User {
     const { name, email, password, birthDate } = userData;
 
     // Проверяем, существует ли пользователь с таким email
-    const existingUser = await get('SELECT id FROM users WHERE email = ?', [email]);
-    if (existingUser) {
+    const existingUserByEmail = await get('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingUserByEmail) {
       throw new Error('Пользователь с таким email уже существует');
+    }
+
+    // Проверяем, существует ли пользователь с таким именем
+    const existingUserByName = await get('SELECT id FROM users WHERE name = ?', [name]);
+    if (existingUserByName) {
+      throw new Error('Пользователь с таким именем уже существует');
     }
 
     // Хешируем пароль перед сохранением
